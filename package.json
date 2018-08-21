@@ -1,0 +1,34 @@
+{
+	"name": "cached-hafas-client",
+	"description": "Pass in a HAFAS client, cache data from it.",
+	"version": "1.0.0",
+	"main": "index.js",
+	"files": [
+		"index.js",
+		"example.js"
+	],
+	"keywords": [
+		"hafas",
+		"hafas-client",
+		"cache",
+		"storage"
+	],
+	"author": "Jannis R <mail@jannisr.de>",
+	"homepage": "https://github.com/derhuerst/cached-hafas-client",
+	"repository": "derhuerst/cached-hafas-client",
+	"bugs": "https://github.com/derhuerst/cached-hafas-client/issues",
+	"license": "ISC",
+	"engines": {
+		"node": ">=6"
+	},
+	"dependencies": {
+	},
+	"devDependencies": {
+		"tap-min": "^1.2.2",
+		"tape": "^4.9.1"
+	},
+	"scripts": {
+		"test": "env NODE_ENV=dev node test.js | tap-min",
+		"prepublishOnly": "npm test"
+	}
+}
