@@ -22,10 +22,18 @@
 		"node": ">=6"
 	},
 	"dependencies": {
+		"async": "^2.6.1",
+		"base58": "^1.0.1",
+		"debug": "^3.1.0",
+		"hash-string": "^1.0.0",
+		"lodash": "^4.17.10"
 	},
 	"devDependencies": {
 		"tap-min": "^1.2.2",
 		"tape": "^4.9.1"
+	},
+	"peerDependencies": {
+		"hafas-client": "3.1.0"
 	},
 	"scripts": {
 		"test": "env NODE_ENV=dev node test.js | tap-min",
