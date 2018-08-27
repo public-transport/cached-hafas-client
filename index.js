@@ -7,7 +7,7 @@ const base58 = require('base58').encode
 const {randomBytes} = require('crypto')
 const {EventEmitter} = require('events')
 const series = require('async/series')
-// const debug = require('debug')('cached-hafas-client')
+const debug = require('debug')('cached-hafas-client')
 
 const MINUTE = 60 * 1000
 const CACHE_PERIOD = MINUTE
@@ -76,14 +76,16 @@ const createCachedHafas = (hafas, db) => {
 
 	const readArrivals = (stopId, whenMin, whenMax, createdMin, createdMax, optHash) => {
 		return new Promise((resolve, reject) => {
-			db.all(READ_ARRIVALS, {
+			const query = {
 				'$stopId': stopId.replace(leadingZeros, ''),
 				'$optHash': optHash,
 				'$createdMin': createdMin / 1000 | 0,
 				'$createdMax': createdMax / 1000 | 0,
 				'$whenMin': whenMin / 1000 | 0,
 				'$whenMax': whenMax / 1000 | 0
-			}, (err, rows) => {
+			}
+			debug('READ_ARRIVALS', query)
+			db.all(READ_ARRIVALS, query, (err, rows) => {
 				if (err) return reject(err)
 				resolve(rows.map(row => JSON.parse(row.data)))
 			})
@@ -93,27 +95,31 @@ const createCachedHafas = (hafas, db) => {
 	const writeArrivals = async (stopId, when, duration, optHash, created, arrivals) => {
 		const queryId = randomBytes(10).toString('hex')
 		await new Promise((resolve, reject) => {
-			db.run(WRITE_ARRIVALS_QUERY, {
+			const row = {
 				'$id': queryId,
 				'$created': created / 1000 | 0,
-				'$stopId': stopId,
+				'$stopId': stopId.replace(leadingZeros, ''),
 				'$when': when / 1000 | 0,
 				'$duration': duration * MINUTE / 1000 | 0,
 				'$optHash': optHash
-			}, err => err ? reject(err) : resolve())
+			}
+			debug('WRITE_ARRIVALS_QUERY', row)
+			db.run(WRITE_ARRIVALS_QUERY, row, err => err ? reject(err) : resolve())
 		})
 
 		// todo: use `cmd = db.prepare; cmd.bind` for performance!
 		// const cmd = db.prepare(WRITE_ARRIVALS)
 		for (let arr of arrivals) {
+			const row = {
+				'$id': randomBytes(10).toString('hex'),
+				'$queryId': queryId,
+				'$when': new Date(arr.when) / 1000 | 0,
+				'$tripId': arr.tripId,
+				'$data': JSON.stringify(arr)
+			}
+			debug('WRITE_ARRIVAL', row)
 			await new Promise((resolve, reject) => {
-				db.run(WRITE_ARRIVAL, {
-					'$id': randomBytes(10).toString('hex'),
-					'$queryId': queryId,
-					'$when': new Date(arr.when) / 1000 | 0,
-					'$tripId': arr.tripId,
-					'$data': JSON.stringify(arr)
-				}, err => err ? reject(err) : resolve())
+				db.run(WRITE_ARRIVAL, row, err => err ? reject(err) : resolve())
 			})
 		}
 		// await new Promise((resolve, reject) => {
@@ -129,6 +135,7 @@ const createCachedHafas = (hafas, db) => {
 
 		if (opt.duration) {
 			const whenMax = when + opt.duration * MINUTE
+			debug('readArrivals', stopId, when, whenMax, t - CACHE_PERIOD, t, optHash)
 			const values = await readArrivals(stopId, when, whenMax, t - CACHE_PERIOD, t, optHash)
 			if (values.length > 0) {
 				out.emit('hit', stopId, opt, values.length)
@@ -138,6 +145,7 @@ const createCachedHafas = (hafas, db) => {
 		}
 
 		const arrivals = await hafas.arrivals(stopId, opt)
+		debug('writeArrivals', stopId, when, opt.duration, optHash, t, '...arrivals')
 		await writeArrivals(stopId, when, opt.duration, optHash, t, arrivals)
 		return arrivals
 	}

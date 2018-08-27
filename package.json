@@ -19,7 +19,7 @@
 	"bugs": "https://github.com/derhuerst/cached-hafas-client/issues",
 	"license": "ISC",
 	"engines": {
-		"node": ">=6"
+		"node": ">=8"
 	},
 	"dependencies": {
 		"async": "^2.6.1",
@@ -29,6 +29,8 @@
 		"lodash": "^4.17.10"
 	},
 	"devDependencies": {
+		"db-hafas": "^3.0.1",
+		"sqlite3": "^4.0.2",
 		"tap-min": "^1.2.2",
 		"tape": "^4.9.1"
 	},
