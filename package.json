@@ -5,6 +5,7 @@
 	"main": "index.js",
 	"files": [
 		"index.js",
+		"lib",
 		"example.js"
 	],
 	"keywords": [
@@ -22,7 +23,6 @@
 		"node": ">=8"
 	},
 	"dependencies": {
-		"async": "^2.6.1",
 		"base58": "^1.0.1",
 		"debug": "^3.1.0",
 		"hash-string": "^1.0.0",
