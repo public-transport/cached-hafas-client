@@ -4,37 +4,65 @@ const {stringify} = require('querystring')
 const pick = require('lodash/pick')
 const hash = require('hash-string')
 const base58 = require('base58').encode
-const series = require('async/series')
+const {randomBytes} = require('crypto')
 const {EventEmitter} = require('events')
+const series = require('async/series')
 // const debug = require('debug')('cached-hafas-client')
 
-const MINUTE = 60 // we store seconds, not milliseconds
+const MINUTE = 60 * 1000
 const CACHE_PERIOD = MINUTE
 
+const CREATE_ARRIVALS_QUERIES_TABLE = `\
+CREATE TABLE IF NOT EXISTS arr_queries (
+	arr_queries_id CHARACTER(20) PRIMARY KEY,
+	created INT NOT NULL,
+	stopId VARCHAR(15) NOT NULL,
+	"when" INT NOT NULL,
+	duration INT NOT NULL,
+	optHash VARCHAR(20) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS arr_queries_created_idx ON arr_queries (created);
+CREATE INDEX IF NOT EXISTS arr_queries_stopId_idx ON arr_queries (stopId);
+CREATE INDEX IF NOT EXISTS arr_queries_when_idx ON arr_queries ("when");
+CREATE INDEX IF NOT EXISTS arr_queries_duration_idx ON arr_queries (duration);
+CREATE INDEX IF NOT EXISTS arr_queries_optHash_idx ON arr_queries (optHash);`
+
 const CREATE_ARRIVALS_TABLE = `\
-CREATE TABLE IF NOT EXISTS arrivals (
-	stopId VARCHAR(15),
+PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS arr (
+	arr_id CHARACTER(20) PRIMARY KEY,
+	query_id CHARACTER(20) NOT NULL,
 	"when" INT,
-	tStored INT,
-	tripId VARCHAR(25),
-	optHash VARCHAR(20),
-	data TEXT
-)`
+	tripId VARCHAR(25) NOT NULL,
+	data TEXT NOT NULL,
+	FOREIGN KEY (query_id) REFERENCES arr_queries(arr_queries_id)
+);
+CREATE INDEX IF NOT EXISTS arr_query_id_idx ON arr (query_id);`
 
 const READ_ARRIVALS = `\
-SELECT data FROM arrivals WHERE \
+SELECT arr.data FROM arr_queries
+LEFT JOIN arr ON arr_queries.arr_queries_id = arr.query_id
+WHERE
+	-- only find equal queries
 	stopId = $stopId
-	AND "when" >= $whenMin
-	AND "when" <= $whenMax
-	AND tStored >= $tStoredMin
-	AND tStored <= $tStoredMax
 	AND optHash = $optHash
-ORDER BY "when"`
+	-- find queries created within the cache period
+	AND created >= $createdMin
+	AND created <= $createdMax
+	-- find queries that cover the when -> (when + duration) period
+	AND arr_queries."when" <= $whenMin
+	AND (arr_queries."when" + duration) >= $whenMax
+`
 
-const WRITE_ARRIVALS = `\
-INSERT OR REPLACE INTO arrivals
-(stopId, "when", tStored, tripId, optHash, data)
-VALUES ($stopId, $when, $tStored, $tripId, $optHash, $data)`
+const WRITE_ARRIVALS_QUERY = `\
+INSERT OR REPLACE INTO arr_queries
+(arr_queries_id, created, stopId, "when", duration, optHash)
+VALUES ($id, $created, $stopId, $when, $duration, $optHash)`
+
+const WRITE_ARRIVAL = `\
+INSERT INTO arr
+(arr_id, query_id, "when", tripId, data)
+VALUES ($id, $queryId, $when, $tripId, $data)`
 
 const arrivalsOptHash = (opt) => {
 	const filtered = pick(opt, [
@@ -44,13 +72,17 @@ const arrivalsOptHash = (opt) => {
 }
 
 const createCachedHafas = (hafas, db) => {
-	const readArrivals = (stopId, whenMin, whenMax, tStoredMin, tStoredMax, optHash) => {
+	const leadingZeros = /^0+/
+
+	const readArrivals = (stopId, whenMin, whenMax, createdMin, createdMax, optHash) => {
 		return new Promise((resolve, reject) => {
 			db.all(READ_ARRIVALS, {
 				'$stopId': stopId.replace(leadingZeros, ''),
-				'$whenMin': whenMin, '$whenMax': whenMax,
-				'$tStoredMin': tStoredMin, '$tStoredMax': tStoredMax,
-				'$optHash': optHash
+				'$optHash': optHash,
+				'$createdMin': createdMin / 1000 | 0,
+				'$createdMax': createdMax / 1000 | 0,
+				'$whenMin': whenMin / 1000 | 0,
+				'$whenMax': whenMax / 1000 | 0
 			}, (err, rows) => {
 				if (err) return reject(err)
 				resolve(rows.map(row => JSON.parse(row.data)))
@@ -58,36 +90,46 @@ const createCachedHafas = (hafas, db) => {
 		})
 	}
 
-	const leadingZeros = /^0+/
-	const writeArrivals = (arrivals, optHash, tStored) => {
-		const cmd = db.prepare(WRITE_ARRIVALS)
+	const writeArrivals = async (stopId, when, duration, optHash, created, arrivals) => {
+		const queryId = randomBytes(10).toString('hex')
+		await new Promise((resolve, reject) => {
+			db.run(WRITE_ARRIVALS_QUERY, {
+				'$id': queryId,
+				'$created': created / 1000 | 0,
+				'$stopId': stopId,
+				'$when': when / 1000 | 0,
+				'$duration': duration * MINUTE / 1000 | 0,
+				'$optHash': optHash
+			}, err => err ? reject(err) : resolve())
+		})
+
+		// todo: use `cmd = db.prepare; cmd.bind` for performance!
+		// const cmd = db.prepare(WRITE_ARRIVALS)
 		for (let arr of arrivals) {
-			cmd.bind({
-				'$stopId': arr.stop.id.replace(leadingZeros, ''),
-				'$when': new Date(arr.when) / 1000 | 0,
-				'$tStored': tStored,
-				'$tripId': arr.tripId,
-				'$optHash': optHash,
-				'$data': JSON.stringify(arr)
+			await new Promise((resolve, reject) => {
+				db.run(WRITE_ARRIVAL, {
+					'$id': randomBytes(10).toString('hex'),
+					'$queryId': queryId,
+					'$when': new Date(arr.when) / 1000 | 0,
+					'$tripId': arr.tripId,
+					'$data': JSON.stringify(arr)
+				}, err => err ? reject(err) : resolve())
 			})
 		}
-		return new Promise((resolve, reject) => {
-			cmd.run((err) => {
-				if (err) reject(err)
-				else resolve()
-			})
-		})
+		// await new Promise((resolve, reject) => {
+		// 	cmd.finalize(err => err ? reject(err) : resolve())
+		// })
 	}
 
 	const arrivals = async (stopId, opt = {}) => {
-		const t = Date.now() / 1000 | 0
-		const whenMin = (opt.when ? +new Date(opt.when) : Date.now()) / 1000 | 0
+		const t = Date.now()
+		const when = opt.when ? +new Date(opt.when) : Date.now()
+		if (!('duration' in opt)) throw new Error('missing opt.duration')
 		const optHash = arrivalsOptHash(opt)
 
 		if (opt.duration) {
-			const whenMax = whenMin + opt.duration * MINUTE
-			console.error(1, 'readArrivals', stopId, whenMin, whenMax, t - CACHE_PERIOD, t, optHash)
-			const values = await readArrivals(stopId, whenMin, whenMax, t - CACHE_PERIOD, t, optHash)
+			const whenMax = when + opt.duration * MINUTE
+			const values = await readArrivals(stopId, when, whenMax, t - CACHE_PERIOD, t, optHash)
 			if (values.length > 0) {
 				out.emit('hit', stopId, opt, values.length)
 				return values
@@ -96,7 +138,7 @@ const createCachedHafas = (hafas, db) => {
 		}
 
 		const arrivals = await hafas.arrivals(stopId, opt)
-		await writeArrivals(arrivals, optHash, t)
+		await writeArrivals(stopId, when, opt.duration, optHash, t, arrivals)
 		return arrivals
 	}
 
@@ -113,17 +155,8 @@ const createCachedHafas = (hafas, db) => {
 createCachedHafas.initDb = (db, done) => {
 	db.serialize(() => {
 		series([
-			cb => db.run(CREATE_ARRIVALS_TABLE, cb),
-			cb => db.run(`\
-	CREATE UNIQUE INDEX IF NOT EXISTS arrivals_stopId_idx ON arrivals (stopId)`, cb),
-			cb => db.run(`\
-	CREATE UNIQUE INDEX IF NOT EXISTS arrivals_when_idx ON arrivals ("when")`, cb),
-			cb => db.run(`\
-	CREATE UNIQUE INDEX IF NOT EXISTS arrivals_tStored_idx ON arrivals (tStored)`, cb),
-			cb => db.run(`\
-	CREATE UNIQUE INDEX IF NOT EXISTS arrivals_tripId_idx ON arrivals (tripId)`, cb),
-			cb => db.run(`\
-	CREATE UNIQUE INDEX IF NOT EXISTS arrivals_optHash_idx ON arrivals (optHash)`, cb)
+			cb => db.exec(CREATE_ARRIVALS_QUERIES_TABLE, cb),
+			cb => db.exec(CREATE_ARRIVALS_TABLE, cb)
 		], done)
 	})
 }
