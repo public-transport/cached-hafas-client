@@ -12,56 +12,58 @@ const debug = require('debug')('cached-hafas-client')
 const MINUTE = 60 * 1000
 const CACHE_PERIOD = MINUTE
 
-const CREATE_ARRIVALS_QUERIES_TABLE = `\
-CREATE TABLE IF NOT EXISTS arr_queries (
-	arr_queries_id CHARACTER(20) PRIMARY KEY,
+const CREATE_DEPS_ARRS_QUERIES_TABLE = `\
+CREATE TABLE IF NOT EXISTS arr_dep_queries (
+	arr_dep_queries_id CHARACTER(20) PRIMARY KEY,
+	type CHARACTER(3), -- 'dep' or 'arr'
 	created INT NOT NULL,
 	stopId VARCHAR(15) NOT NULL,
 	"when" INT NOT NULL,
 	duration INT NOT NULL,
 	optHash VARCHAR(20) NOT NULL
 );
-CREATE INDEX IF NOT EXISTS arr_queries_created_idx ON arr_queries (created);
-CREATE INDEX IF NOT EXISTS arr_queries_stopId_idx ON arr_queries (stopId);
-CREATE INDEX IF NOT EXISTS arr_queries_when_idx ON arr_queries ("when");
-CREATE INDEX IF NOT EXISTS arr_queries_duration_idx ON arr_queries (duration);
-CREATE INDEX IF NOT EXISTS arr_queries_optHash_idx ON arr_queries (optHash);`
+CREATE INDEX IF NOT EXISTS arr_dep_queries_created_idx ON arr_dep_queries (created);
+CREATE INDEX IF NOT EXISTS arr_dep_queries_stopId_idx ON arr_dep_queries (stopId);
+CREATE INDEX IF NOT EXISTS arr_dep_queries_when_idx ON arr_dep_queries ("when");
+CREATE INDEX IF NOT EXISTS arr_dep_queries_duration_idx ON arr_dep_queries (duration);
+CREATE INDEX IF NOT EXISTS arr_dep_queries_optHash_idx ON arr_dep_queries (optHash);`
 
-const CREATE_ARRIVALS_TABLE = `\
+const CREATE_DEPS_ARRS_TABLE = `\
 PRAGMA foreign_keys = ON;
-CREATE TABLE IF NOT EXISTS arr (
-	arr_id CHARACTER(20) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS arr_dep (
+	arr_dep_id CHARACTER(20) PRIMARY KEY,
 	query_id CHARACTER(20) NOT NULL,
 	"when" INT,
 	tripId VARCHAR(25) NOT NULL,
 	data TEXT NOT NULL,
-	FOREIGN KEY (query_id) REFERENCES arr_queries(arr_queries_id)
+	FOREIGN KEY (query_id) REFERENCES arr_dep_queries(arr_dep_queries_id)
 );
-CREATE INDEX IF NOT EXISTS arr_query_id_idx ON arr (query_id);`
+CREATE INDEX IF NOT EXISTS arr_query_id_idx ON arr_dep (query_id);`
 
-const READ_ARRIVALS = `\
-SELECT arr.data FROM arr_queries
-LEFT JOIN arr ON arr_queries.arr_queries_id = arr.query_id
+const READ_DEPS_ARRS = `\
+SELECT arr_dep.data FROM arr_dep_queries
+LEFT JOIN arr_dep ON arr_dep_queries.arr_dep_queries_id = arr_dep.query_id
 WHERE
 	-- only find equal queries
-	stopId = $stopId
+	type = $type
+	AND stopId = $stopId
 	AND optHash = $optHash
 	-- find queries created within the cache period
 	AND created >= $createdMin
 	AND created <= $createdMax
 	-- find queries that cover the when -> (when + duration) period
-	AND arr_queries."when" <= $whenMin
-	AND (arr_queries."when" + duration) >= $whenMax
+	AND arr_dep_queries."when" <= $whenMin
+	AND (arr_dep_queries."when" + duration) >= $whenMax
 `
 
-const WRITE_ARRIVALS_QUERY = `\
-INSERT OR REPLACE INTO arr_queries
-(arr_queries_id, created, stopId, "when", duration, optHash)
-VALUES ($id, $created, $stopId, $when, $duration, $optHash)`
+const WRITE_DEPS_ARRS_QUERY = `\
+INSERT OR REPLACE INTO arr_dep_queries
+(arr_dep_queries_id, type, created, stopId, "when", duration, optHash)
+VALUES ($id, $type, $created, $stopId, $when, $duration, $optHash)`
 
-const WRITE_ARRIVAL = `\
-INSERT INTO arr
-(arr_id, query_id, "when", tripId, data)
+const WRITE_DEP_ARR = `\
+INSERT INTO arr_dep
+(arr_dep_id, query_id, "when", tripId, data)
 VALUES ($id, $queryId, $when, $tripId, $data)`
 
 const arrivalsOptHash = (opt) => {
@@ -74,9 +76,10 @@ const arrivalsOptHash = (opt) => {
 const createCachedHafas = (hafas, db) => {
 	const leadingZeros = /^0+/
 
-	const readArrivals = (stopId, whenMin, whenMax, createdMin, createdMax, optHash) => {
+	const readDepsArrs = (type, stopId, whenMin, whenMax, createdMin, createdMax, optHash) => {
 		return new Promise((resolve, reject) => {
 			const query = {
+				'$type': type, // 'dep' or 'arr'
 				'$stopId': stopId.replace(leadingZeros, ''),
 				'$optHash': optHash,
 				'$createdMin': createdMin / 1000 | 0,
@@ -84,31 +87,32 @@ const createCachedHafas = (hafas, db) => {
 				'$whenMin': whenMin / 1000 | 0,
 				'$whenMax': whenMax / 1000 | 0
 			}
-			debug('READ_ARRIVALS', query)
-			db.all(READ_ARRIVALS, query, (err, rows) => {
+			debug('READ_DEPS_ARRS', query)
+			db.all(READ_DEPS_ARRS, query, (err, rows) => {
 				if (err) return reject(err)
 				resolve(rows.map(row => JSON.parse(row.data)))
 			})
 		})
 	}
 
-	const writeArrivals = async (stopId, when, duration, optHash, created, arrivals) => {
+	const writeDepsArrs = async (type, stopId, when, duration, optHash, created, arrivals) => {
 		const queryId = randomBytes(10).toString('hex')
 		await new Promise((resolve, reject) => {
 			const row = {
 				'$id': queryId,
+				'$type': type, // 'dep' or 'arr'
 				'$created': created / 1000 | 0,
 				'$stopId': stopId.replace(leadingZeros, ''),
 				'$when': when / 1000 | 0,
 				'$duration': duration * MINUTE / 1000 | 0,
 				'$optHash': optHash
 			}
-			debug('WRITE_ARRIVALS_QUERY', row)
-			db.run(WRITE_ARRIVALS_QUERY, row, err => err ? reject(err) : resolve())
+			debug('WRITE_DEPS_ARRS_QUERY', row)
+			db.run(WRITE_DEPS_ARRS_QUERY, row, err => err ? reject(err) : resolve())
 		})
 
 		// todo: use `cmd = db.prepare; cmd.bind` for performance!
-		// const cmd = db.prepare(WRITE_ARRIVALS)
+		// const cmd = db.prepare(WRITE_DEP_ARR)
 		for (let arr of arrivals) {
 			const row = {
 				'$id': randomBytes(10).toString('hex'),
@@ -117,9 +121,9 @@ const createCachedHafas = (hafas, db) => {
 				'$tripId': arr.tripId,
 				'$data': JSON.stringify(arr)
 			}
-			debug('WRITE_ARRIVAL', row)
+			debug('WRITE_DEP_ARR', row)
 			await new Promise((resolve, reject) => {
-				db.run(WRITE_ARRIVAL, row, err => err ? reject(err) : resolve())
+				db.run(WRITE_DEP_ARR, row, err => err ? reject(err) : resolve())
 			})
 		}
 		// await new Promise((resolve, reject) => {
@@ -127,32 +131,39 @@ const createCachedHafas = (hafas, db) => {
 		// })
 	}
 
-	const arrivals = async (stopId, opt = {}) => {
-		const t = Date.now()
-		const when = opt.when ? +new Date(opt.when) : Date.now()
-		if (!('duration' in opt)) throw new Error('missing opt.duration')
-		const optHash = arrivalsOptHash(opt)
+	const depsOrArrs = (method) => {
+		const query = async (stopId, opt = {}) => {
+			const t = Date.now()
+			const when = opt.when ? +new Date(opt.when) : Date.now()
+			if (!('duration' in opt)) throw new Error('missing opt.duration')
+			const optHash = arrivalsOptHash(opt)
 
-		if (opt.duration) {
-			const whenMax = when + opt.duration * MINUTE
-			debug('readArrivals', stopId, when, whenMax, t - CACHE_PERIOD, t, optHash)
-			const values = await readArrivals(stopId, when, whenMax, t - CACHE_PERIOD, t, optHash)
-			if (values.length > 0) {
-				out.emit('hit', stopId, opt, values.length)
-				return values
+			if (opt.duration) {
+				const whenMax = when + opt.duration * MINUTE
+				debug('readDepsArrs', stopId, when, whenMax, t - CACHE_PERIOD, t, optHash)
+				const values = await readDepsArrs(method, stopId, when, whenMax, t - CACHE_PERIOD, t, optHash)
+				if (values.length > 0) {
+					out.emit('hit', method, stopId, opt, values.length)
+					return values
+				}
+				out.emit('miss', method, stopId, opt)
 			}
-			out.emit('miss', stopId, opt)
-		}
 
-		const arrivals = await hafas.arrivals(stopId, opt)
-		debug('writeArrivals', stopId, when, opt.duration, optHash, t, '...arrivals')
-		await writeArrivals(stopId, when, opt.duration, optHash, t, arrivals)
-		return arrivals
+			const arrivals = await hafas.arrivals(stopId, opt)
+			debug('writeDepsArrs', stopId, when, opt.duration, optHash, t, '...arrivals')
+			await writeDepsArrs(method, stopId, when, opt.duration, optHash, t, arrivals)
+			return arrivals
+		}
+		return query
 	}
+
+	const departures = depsOrArrs('dep')
+	const arrivals = depsOrArrs('arr')
 
 	// todo
 
 	const out = new EventEmitter()
+	out.departures = departures
 	out.arrivals = arrivals
 	return out
 
@@ -163,8 +174,8 @@ const createCachedHafas = (hafas, db) => {
 createCachedHafas.initDb = (db, done) => {
 	db.serialize(() => {
 		series([
-			cb => db.exec(CREATE_ARRIVALS_QUERIES_TABLE, cb),
-			cb => db.exec(CREATE_ARRIVALS_TABLE, cb)
+			cb => db.exec(CREATE_DEPS_ARRS_QUERIES_TABLE, cb),
+			cb => db.exec(CREATE_DEPS_ARRS_TABLE, cb)
 		], done)
 	})
 }
