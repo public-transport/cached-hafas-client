@@ -1,9 +1,9 @@
 'use strict'
 
+const base58 = require('base58').encode
+const hash = require('hash-string')
 const {stringify} = require('querystring')
 const pick = require('lodash/pick')
-const hash = require('hash-string')
-const base58 = require('base58').encode
 const debug = require('debug')('cached-hafas-client')
 const {EventEmitter} = require('events')
 
@@ -12,11 +12,16 @@ const createStorage = require('./lib/storage')
 const MINUTE = 60 * 1000
 const CACHE_PERIOD = MINUTE
 
+const computeOptHash = (opt) => {
+	const _opt = Object.create(null)
+	for (const key in opt) _opt[key] = '' + opt[key]
+	return base58(hash(stringify(_opt)))
+}
 const arrivalsOptHash = (opt) => {
 	const filtered = pick(opt, [
 		'direction', 'stationLines', 'remarks', 'includeRelatedStations', 'language'
 	])
-	return base58(hash(stringify(filtered)))
+	return optHash(filtered)
 }
 
 const createCachedHafas = (hafas, db) => {
@@ -50,12 +55,32 @@ const createCachedHafas = (hafas, db) => {
 	const departures = depsOrArrs('dep', hafas.departures)
 	const arrivals = depsOrArrs('arr', hafas.arrivals)
 
+	const journeys = async (from, to, opt = {}) => {
+		const createdMax = Date.now()
+		const createdMin = createdMax - CACHE_PERIOD
+		const optHash = computeOptHash(opt)
+
+		{
+			const cached = await storage.readJourneys(from, to, optHash, createdMin, createdMax)
+			if (cached.length > 0) {
+				out.emit('hit', 'journeys', from, to, opt, cached.length)
+				return cached
+			}
+			out.emit('miss', 'journeys', from, to, opt)
+		}
+
+		const journeys = await hafas.journeys(from, to, opt)
+		await storage.writeJourneys(from, to, optHash, createdMin, journeys)
+		return journeys
+	}
+
 	// todo
 
 	const out = new EventEmitter()
 	out.init = storage.init // todo: run init here
 	out.departures = departures
 	out.arrivals = arrivals
+	out.journeys = journeys
 	return out
 
 	// todo: delete old entries
