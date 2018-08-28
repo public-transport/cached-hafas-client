@@ -1,7 +1,8 @@
 'use strict'
 
+const {createHash} = require('crypto')
 const base58 = require('base58').encode
-const hash = require('hash-string')
+const hashStr = require('hash-string')
 const {stringify} = require('querystring')
 const pick = require('lodash/pick')
 const debug = require('debug')('cached-hafas-client')
@@ -12,16 +13,28 @@ const createStorage = require('./lib/storage')
 const MINUTE = 60 * 1000
 const CACHE_PERIOD = MINUTE
 
-const computeOptHash = (opt) => {
+const hash = (str) => {
+	return createHash('sha256').update(str, 'utf8').digest('hex').slice(0, 32)
+}
+
+const optHash = (opt) => {
 	const _opt = Object.create(null)
 	for (const key in opt) _opt[key] = '' + opt[key]
-	return base58(hash(stringify(_opt)))
+	return base58(hashStr(stringify(_opt)))
 }
 const arrivalsOptHash = (opt) => {
-	const filtered = pick(opt, [
+	const filtered = pick(opt, [ // todo: use omit
 		'direction', 'stationLines', 'remarks', 'includeRelatedStations', 'language'
 	])
 	return optHash(filtered)
+}
+
+const formatLocation = (loc) => {
+	if (!loc) throw new Error('invalid location! pass a string or an object.')
+	if ('string' === typeof loc) return loc
+	if (loc.type === 'station' || loc.type === 'stop') return loc.id
+	if (loc.type) return JSON.stringify(loc)
+	throw new Error('invalid location!')
 }
 
 const createCachedHafas = (hafas, db) => {
@@ -58,11 +71,15 @@ const createCachedHafas = (hafas, db) => {
 	const journeys = async (from, to, opt = {}) => {
 		const createdMax = Date.now()
 		const createdMin = createdMax - CACHE_PERIOD
-		const optHash = computeOptHash(opt)
+		const inputHash = hash(JSON.stringify([
+			formatLocation(from),
+			formatLocation(to),
+			opt
+		]))
 
 		{
-			const cached = await storage.readJourneys(from, to, optHash, createdMin, createdMax)
-			if (cached.length > 0) {
+			const cached = await storage.readJourneys(inputHash, createdMin, createdMax)
+			if (cached && cached.length > 0) {
 				out.emit('hit', 'journeys', from, to, opt, cached.length)
 				return cached
 			}
@@ -70,7 +87,7 @@ const createCachedHafas = (hafas, db) => {
 		}
 
 		const journeys = await hafas.journeys(from, to, opt)
-		await storage.writeJourneys(from, to, optHash, createdMin, journeys)
+		await storage.writeJourneys(inputHash, createdMin, journeys)
 		return journeys
 	}
 
