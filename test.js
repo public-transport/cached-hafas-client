@@ -115,4 +115,39 @@ test('arrivals: longer timespan -> fetches new', async (t) => {
 	t.end()
 })
 
+test('journeys: same arguments -> reads from cache', async (t) => {
+	const spy = createSpy(hafas.journeys)
+	const h = await withMocksAndCache(hafas, {journeys: spy})
+	const opt = {departure: when, stationLines: true}
+
+	await h.journeys(wollinerStr, husemannstr, opt)
+	t.equal(spy.callCount, 1)
+	await h.journeys(wollinerStr, husemannstr, Object.assign({}, opt))
+	t.equal(spy.callCount, 1)
+	// todo: results deep equal?
+	t.end()
+})
+
+test('journeys: different arguments -> fetches new', async (t) => {
+	const spy = createSpy(hafas.journeys)
+	const h = await withMocksAndCache(hafas, {journeys: spy})
+
+	await h.journeys(wollinerStr, husemannstr, {departure: when, stationLines: true})
+	t.equal(spy.callCount, 1)
+
+	await h.journeys(wollinerStr, husemannstr, {
+		departure: new Date(+when + 3 * minute),
+		stationLines: true
+	})
+	t.equal(spy.callCount, 2)
+	await h.journeys(wollinerStr, husemannstr, {departure: when, stationLines: false})
+	t.equal(spy.callCount, 3)
+	await h.journeys(wollinerStr, husemannstr, {departure: when, stopovers: true})
+	t.equal(spy.callCount, 4)
+
+	t.end()
+})
+
 // todo
+// todo: removes from cache
+// todo: hit/miss events
