@@ -4,22 +4,22 @@ const DEBUG = process.env.NODE_DEBUG === 'cached-hafas-client'
 
 const {DateTime} = require('luxon')
 const sqlite3 = DEBUG ? require('sqlite3').verbose() : require('sqlite3')
-const createHafas = require('db-hafas')
+const createHafas = require('vbb-hafas')
 const tape = require('tape')
 const tapePromise = require('tape-promise').default
 
 const createCachedHafas = require('.')
 
 const when = new Date(DateTime.fromMillis(Date.now(), {
-	zone: 'Europe/Berlin', // todo: use db-hafas timezone
-	locale: 'de-DE', // todo: use db-hafas locale
+	zone: 'Europe/Berlin', // todo: use vbb-hafas timezone
+	locale: 'de-DE', // todo: use vbb-hafas locale
 })
 .startOf('week').plus({weeks: 1, hours: 10})
 .toISO())
 const minute = 60 * 1000
 
-const wollinerStr = '0730799'
-const husemannstr = '0732658'
+const wollinerStr = '900000007105'
+const husemannstr = '900000110511'
 
 const hafas = createHafas('hafas-client-cache test')
 const withMocksAndCache = (hafas, mocks) => {
