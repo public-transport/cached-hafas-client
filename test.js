@@ -20,6 +20,12 @@ const minute = 60 * 1000
 
 const wollinerStr = '900000007105'
 const husemannstr = '900000110511'
+const torfstr17 = {
+	type: 'location',
+	address: '13353 Berlin-Wedding, Torfstr. 17',
+	latitude: 52.541797,
+	longitude: 13.350042
+}
 
 const hafas = createHafas('hafas-client-cache test')
 const withMocksAndCache = (hafas, mocks) => {
@@ -327,6 +333,39 @@ test('radar: different arguments -> fetches new', async (t) => {
 	await h.radar(Object.assign({}, bbox, {south: 52}), opt) // different `bbox`
 	t.equal(spy.callCount, 2)
 	await h.radar(bbox, {frames: 1, results: 100, duration: 10}) // different `opt`
+	t.equal(spy.callCount, 3)
+	t.end()
+})
+
+test('reachableFrom: same arguments -> reads from cache', async (t) => {
+	const spy = createSpy(hafas.reachableFrom)
+	const h = await withMocksAndCache(hafas, {reachableFrom: spy})
+
+	const opt = {maxTransfers: 2, maxDuration: 30, when: +when}
+	const newWhen = +when + 100
+
+	await h.reachableFrom(torfstr17, opt)
+	t.equal(spy.callCount, 1)
+	await h.reachableFrom(torfstr17, Object.assign({}, opt, {when: newWhen}))
+	t.equal(spy.callCount, 1)
+	t.end()
+})
+
+test('reachableFrom: different arguments -> fetches new', async (t) => {
+	// todo: make this test reliable, e.g. by retrying with exponential pauses
+	const spy = createSpy(hafas.reachableFrom)
+	const h = await withMocksAndCache(hafas, {reachableFrom: spy})
+
+	const newAddr = Object.assign({}, torfstr17, {address: torfstr17.address + 'foo'})
+	const opt = {maxTransfers: 2, maxDuration: 30, when}
+	const newWhen = +when + 5 * minute
+
+	await h.reachableFrom(torfstr17, opt)
+	t.equal(spy.callCount, 1)
+
+	await h.reachableFrom(newAddr, opt)
+	t.equal(spy.callCount, 2)
+	await h.reachableFrom(torfstr17, Object.assign({}, opt, {when: newWhen}))
 	t.equal(spy.callCount, 3)
 	t.end()
 })

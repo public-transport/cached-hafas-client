@@ -125,6 +125,20 @@ const createCachedHafas = (hafas, db) => {
 		return withCache('radar', [bbox, opt], [bbox, opt])
 	}
 
+	const reachableFrom = (address, opt = {}) => {
+		let cacheOpt = opt
+		// todo: cache individually by `opt.when`
+		if ('when' in cacheOpt) {
+			cacheOpt = Object.assign({}, opt)
+			cacheOpt.when = Math.round(new Date(cacheOpt.when) / 1000)
+		}
+
+		return withCache('reachableFrom', [
+			address,
+			cacheOpt
+		], [address, opt])
+	}
+
 	// todo
 
 	const out = new EventEmitter()
@@ -137,6 +151,7 @@ const createCachedHafas = (hafas, db) => {
 	out.station = station
 	out.nearby = nearby
 	if (hafas.radar) out.radar = radar
+	if (hafas.reachableFrom) out.reachableFrom = reachableFrom
 	return out
 
 	// todo: delete old entries
