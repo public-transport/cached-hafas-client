@@ -58,8 +58,9 @@ const createCachedHafas = (hafas, db) => {
 				out.emit('miss', method, stopId, opt)
 			}
 
+			const t2 = Date.now()
 			const arrivals = await queryUncached(stopId, opt)
-			await storage.writeDepsOrArrs(method, stopId, when, dur, optHash, t, arrivals)
+			await storage.writeDepsOrArrs(method, stopId, when, dur, optHash, t2, arrivals)
 			return arrivals
 		}
 		return query
@@ -86,8 +87,9 @@ const createCachedHafas = (hafas, db) => {
 			out.emit('miss', 'journeys', from, to, opt)
 		}
 
+		const created = Date.now()
 		const journeys = await hafas.journeys(from, to, opt)
-		await storage.writeJourneys(inputHash, createdMin, journeys)
+		await storage.writeJourneys(inputHash, created, journeys)
 		return journeys
 	}
 
