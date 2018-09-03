@@ -69,28 +69,30 @@ const createCachedHafas = (hafas, db) => {
 	const departures = depsOrArrs('dep', hafas.departures)
 	const arrivals = depsOrArrs('arr', hafas.arrivals)
 
-	const journeys = async (from, to, opt = {}) => {
+	const withCache = async (methodName, cacheKeyData, args) => {
 		const createdMax = Date.now()
 		const createdMin = createdMax - CACHE_PERIOD
-		const inputHash = hash(JSON.stringify([
+		const inputHash = hash(JSON.stringify(cacheKeyData))
+
+		const cached = await storage.readAtomic(methodName, inputHash, createdMin, createdMax)
+		if (cached) {
+			out.emit('hit', methodName, ...args, cached.length)
+			return cached
+		}
+		out.emit('miss', methodName, ...args)
+
+		const created = Date.now()
+		const val = await hafas[methodName](...args)
+		await storage.writeAtomic(methodName, inputHash, created, val)
+		return val
+	}
+
+	const journeys = (from, to, opt = {}) => {
+		return withCache('journeys', [
 			formatLocation(from),
 			formatLocation(to),
 			opt
-		]))
-
-		{
-			const cached = await storage.readJourneys(inputHash, createdMin, createdMax)
-			if (cached && cached.length > 0) {
-				out.emit('hit', 'journeys', from, to, opt, cached.length)
-				return cached
-			}
-			out.emit('miss', 'journeys', from, to, opt)
-		}
-
-		const created = Date.now()
-		const journeys = await hafas.journeys(from, to, opt)
-		await storage.writeJourneys(inputHash, created, journeys)
-		return journeys
+		], [from, to, opt])
 	}
 
 	// todo
