@@ -148,6 +148,189 @@ test('journeys: different arguments -> fetches new', async (t) => {
 	t.end()
 })
 
+const pJourneyRefreshToken = hafas.journeys(wollinerStr, husemannstr, {
+	departure: when,
+	results: 1, stopovers: false, remarks: false
+})
+.then(([journey]) => journey.refreshToken)
+
+test('refreshJourney: same arguments -> reads from cache', async (t) => {
+	const spy = createSpy(hafas.refreshJourney)
+	const h = await withMocksAndCache(hafas, {refreshJourney: spy})
+
+	const refreshToken = await pJourneyRefreshToken
+	const opt = {stopovers: true}
+
+	await h.refreshJourney(refreshToken, opt)
+	t.equal(spy.callCount, 1)
+	await h.refreshJourney(refreshToken, Object.assign({}, opt))
+	t.equal(spy.callCount, 1)
+	t.end()
+})
+
+test('refreshJourney: different arguments -> fetches new', async (t) => {
+	const spy = createSpy(hafas.refreshJourney)
+	const h = await withMocksAndCache(hafas, {refreshJourney: spy})
+
+	const refreshToken = await pJourneyRefreshToken
+	const opt = {stopovers: true}
+
+	await h.refreshJourney(refreshToken, opt)
+	t.equal(spy.callCount, 1)
+
+	await h.refreshJourney(refreshToken + 'a', opt) // different `refreshToken`
+	t.equal(spy.callCount, 2)
+	await h.refreshJourney(refreshToken, {remarks: false}) // different `opt`
+	t.equal(spy.callCount, 3)
+	t.end()
+})
+
+const pTrip = hafas.journeys(wollinerStr, husemannstr, {
+	departure: when,
+	results: 1,
+	stopovers: false
+})
+.then(([journey]) => {
+	const leg = journey.legs.find(leg => leg.mode !== 'walking')
+	return {id: leg.id, lineName: leg.line && leg.line.name}
+})
+
+test('trip: same arguments -> reads from cache', async (t) => {
+	const spy = createSpy(hafas.trip)
+	const h = await withMocksAndCache(hafas, {trip: spy})
+
+	const {id, lineName} = await pTrip
+	const opt = {when, stopovers: true}
+
+	await h.trip(id, lineName, opt)
+	t.equal(spy.callCount, 1)
+	await h.trip(id, lineName, Object.assign({}, opt))
+	t.equal(spy.callCount, 1)
+	t.end()
+})
+
+test('trip: different params -> fetches new', async (t) => {
+	const spy = createSpy(hafas.trip)
+	const h = await withMocksAndCache(hafas, {trip: spy})
+
+	const {id, lineName} = await pTrip
+	const opt = {when, stopovers: true}
+
+	await h.trip(id, lineName, opt)
+	t.equal(spy.callCount, 1)
+
+	await h.trip(id + 'a', lineName, opt) // different `id`
+	t.equal(spy.callCount, 2)
+	await h.trip(id, lineName + 'a', opt) // different `lineName`
+	t.equal(spy.callCount, 3)
+	await h.trip(id, lineName, {when, stopovers: false}) // different `opt`
+	t.equal(spy.callCount, 4)
+	t.end()
+})
+
+test('station: same arguments -> reads from cache', async (t) => {
+	const spy = createSpy(hafas.station)
+	const h = await withMocksAndCache(hafas, {station: spy})
+
+	const id = '900000068201'
+	const opt = {stationLines: true}
+
+	await h.station(id, opt)
+	t.equal(spy.callCount, 1)
+	await h.station(id, Object.assign({}, opt))
+	t.equal(spy.callCount, 1)
+	t.end()
+})
+
+test('station: different arguments -> fetches new', async (t) => {
+	const spy = createSpy(hafas.station)
+	const h = await withMocksAndCache(hafas, {station: spy})
+
+	const id = '900000068201'
+	const opt = {stationLines: true}
+
+	await h.station(id, opt)
+	t.equal(spy.callCount, 1)
+
+	await h.station('900000017101', opt) // different `id`
+	t.equal(spy.callCount, 2)
+	await h.station(id, {stationLines: true, language: 'en'}) // different `opt`
+	t.equal(spy.callCount, 3)
+	t.end()
+})
+
+test('nearby: same arguments -> reads from cache', async (t) => {
+	const spy = createSpy(hafas.nearby)
+	const h = await withMocksAndCache(hafas, {nearby: spy})
+
+	const loc = {type: 'location', latitude: 52.5137344, longitude: 13.4744798}
+	const opt = {distance: 400, stationLines: true}
+
+	await h.nearby(loc, opt)
+	t.equal(spy.callCount, 1)
+	await h.nearby(loc, Object.assign({}, opt))
+	t.equal(spy.callCount, 1)
+	t.end()
+})
+
+test('nearby: different arguments -> fetches new', async (t) => {
+	const spy = createSpy(hafas.nearby)
+	const h = await withMocksAndCache(hafas, {nearby: spy})
+
+	const loc = {type: 'location', latitude: 52.5137344, longitude: 13.4744798}
+	const opt = {distance: 400, stationLines: true}
+
+	await h.nearby(loc, opt)
+	t.equal(spy.callCount, 1)
+
+	await h.nearby({type: 'location', latitude: 52.51, longitude: 13.47}, opt) // different `location`
+	t.equal(spy.callCount, 2)
+	await h.nearby(loc, {stationLines: true, language: 'de'}) // different `opt`
+	t.equal(spy.callCount, 3)
+	t.end()
+})
+
+test('radar: same arguments -> reads from cache', async (t) => {
+	const spy = createSpy(hafas.radar)
+	const h = await withMocksAndCache(hafas, {radar: spy})
+
+	const bbox = {
+		north: 52.52411,
+		west: 13.41002,
+		south: 52.51942,
+		east: 13.41709
+	}
+	const opt = {frames: 1, results: 100}
+
+	await h.radar(bbox, opt)
+	t.equal(spy.callCount, 1)
+	await h.radar(bbox, Object.assign({}, opt))
+	t.equal(spy.callCount, 1)
+	t.end()
+})
+
+test('radar: different arguments -> fetches new', async (t) => {
+	const spy = createSpy(hafas.radar)
+	const h = await withMocksAndCache(hafas, {radar: spy})
+
+	const bbox = {
+		north: 52.52411,
+		west: 13.41002,
+		south: 52.51942,
+		east: 13.41709
+	}
+	const opt = {frames: 1, results: 100}
+
+	await h.radar(bbox, opt)
+	t.equal(spy.callCount, 1)
+
+	await h.radar(Object.assign({}, bbox, {south: 52}), opt) // different `bbox`
+	t.equal(spy.callCount, 2)
+	await h.radar(bbox, {frames: 1, results: 100, duration: 10}) // different `opt`
+	t.equal(spy.callCount, 3)
+	t.end()
+})
+
 // todo
 // todo: removes from cache
 // todo: hit/miss events

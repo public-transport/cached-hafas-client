@@ -5,6 +5,7 @@ const base58 = require('base58').encode
 const hashStr = require('hash-string')
 const {stringify} = require('querystring')
 const pick = require('lodash/pick')
+const omit = require('lodash/omit')
 const debug = require('debug')('cached-hafas-client')
 const {EventEmitter} = require('events')
 
@@ -95,6 +96,35 @@ const createCachedHafas = (hafas, db) => {
 		], [from, to, opt])
 	}
 
+	const refreshJourney = (refreshToken, opt = {}) => {
+		return withCache('refreshJourney', [refreshToken, opt], [refreshToken, opt])
+	}
+
+	const trip = (id, lineName, opt = {}) => {
+		return withCache('trip', [
+			id,
+			lineName,
+			omit(opt, ['when'])
+		], [id, lineName, opt])
+	}
+
+	const station = (id, opt = {}) => {
+		return withCache('station', [id, opt], [id, opt])
+	}
+
+	// todo: cache individual locations, use a spatial index for querying
+	const nearby = (loc, opt = {}) => {
+		return withCache('nearby', [
+			formatLocation(loc),
+			opt
+		], [loc, opt])
+	}
+
+	// todo: cache individual movements, use a spatial index for querying
+	const radar = (bbox, opt = {}) => {
+		return withCache('radar', [bbox, opt], [bbox, opt])
+	}
+
 	// todo
 
 	const out = new EventEmitter()
@@ -102,6 +132,11 @@ const createCachedHafas = (hafas, db) => {
 	out.departures = departures
 	out.arrivals = arrivals
 	out.journeys = journeys
+	if (hafas.refreshJourney) out.refreshJourney = refreshJourney
+	if (hafas.trip) out.trip = trip
+	out.station = station
+	out.nearby = nearby
+	if (hafas.radar) out.radar = radar
 	return out
 
 	// todo: delete old entries
