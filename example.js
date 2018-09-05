@@ -5,7 +5,7 @@ const sqlite3 = require('sqlite3')
 const withCache = require('.')
 const createSqliteStore = require('./stores/sqlite')
 
-const hafas = createHafas('hafas-client-cache example')
+const hafas = createHafas('cached-hafas-client example')
 const db = new sqlite3.Database(':memory:')
 const store = createSqliteStore(db)
 const cachedHafas = withCache(hafas, store)
