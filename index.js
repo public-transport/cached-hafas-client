@@ -7,10 +7,10 @@ const omit = require('lodash/omit')
 const debug = require('debug')('cached-hafas-client')
 const {EventEmitter} = require('events')
 
-const createStorage = require('./lib/storage')
-
 const MINUTE = 60 * 1000
 const CACHE_PERIOD = MINUTE
+
+const isObj = o => o && 'object' === typeof o && !Array.isArray(o)
 
 const hash = (str) => {
 	return createHash('sha256').update(str, 'utf8').digest('hex').slice(0, 32)
@@ -24,8 +24,15 @@ const formatLocation = (loc) => {
 	throw new Error('invalid location!')
 }
 
-const createCachedHafas = (hafas, db) => {
-	const storage = createStorage(db)
+const STORAGE_METHODS = ['init', 'readCollection', 'writeCollection', 'readAtomic', 'writeAtomic']
+
+const createCachedHafas = (hafas, storage) => {
+	if (!isObj(storage)) throw new Error('storage must be an object')
+	for (const method of STORAGE_METHODS) {
+		if ('function' !== typeof storage[method]) {
+			throw new Error(`invalid storage: storage.${method} is not a function`)
+		}
+	}
 
 	const collectionWithCache = async (method, cacheKeyData, whenMin, duration, args, valToRow) => {
 		const createdMax = Date.now()

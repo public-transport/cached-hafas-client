@@ -8,6 +8,7 @@ const createHafas = require('vbb-hafas')
 const tape = require('tape')
 const tapePromise = require('tape-promise').default
 
+const createSqliteStore = require('./stores/sqlite')
 const createCachedHafas = require('.')
 
 const when = new Date(DateTime.fromMillis(Date.now(), {
@@ -32,7 +33,8 @@ const withMocksAndCache = (hafas, mocks) => {
 	const mocked = Object.assign(Object.create(hafas), mocks)
 	const db = new sqlite3.Database(':memory:')
 	if (DEBUG) db.on('profile', query => console.debug(query))
-	const cachedMocked = createCachedHafas(mocked, db)
+	const store = createSqliteStore(db)
+	const cachedMocked = createCachedHafas(mocked, store)
 	return new Promise((resolve, reject) => {
 		cachedMocked.init(err => err ? reject(err) : resolve(cachedMocked))
 	})

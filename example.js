@@ -3,10 +3,12 @@
 const createHafas = require('vbb-hafas')
 const sqlite3 = require('sqlite3')
 const withCache = require('.')
+const createSqliteStore = require('./stores/sqlite')
 
 const hafas = createHafas('hafas-client-cache example')
 const db = new sqlite3.Database(':memory:')
-const cachedHafas = withCache(hafas, db)
+const store = createSqliteStore(db)
+const cachedHafas = withCache(hafas, store)
 
 cachedHafas.on('hit', (method, ...args) => console.info('cache hit!', method, ...args))
 cachedHafas.on('miss', (method, ...args) => console.info('cache miss!', method, ...args))

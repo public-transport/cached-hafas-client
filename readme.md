@@ -24,13 +24,14 @@ Because `cached-hafas-client` caches HAFAS responses by request, it is build on 
 const createHafas = require('vbb-hafas')
 const hafas = createHafas('hafas-client-cache example')
 
-// create in-memory DB
+// create in-memory SQLite store
 const sqlite3 = require('sqlite3')
-const db = new sqlite3.Database(':memory:')
+const createSqliteStore = require('cached-hafas-client/stores/sqlite')
+const store = createSqliteStore(new sqlite3.Database(':memory:'))
 
 // wrap HAFAS client with cache
 const withCache = require('cached-hafas-client')
-const cachedHafas = withCache(hafas, db)
+const cachedHafas = withCache(hafas, store)
 
 cachedHafas.init((err) => { // initialize the DB
 	if (err) return console.error(err)

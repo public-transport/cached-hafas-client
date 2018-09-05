@@ -85,7 +85,7 @@ INSERT OR REPLACE INTO atomics
 (atomics_id, created, method, inputHash, data)
 VALUES ($id, $created, $method, $inputHash, $data)`
 
-const createStorage = (db) => {
+const createStore = (db) => {
 	const init = (cb) => {
 		debug('init')
 		db.exec([
@@ -196,4 +196,4 @@ const createStorage = (db) => {
 	}
 }
 
-module.exports = createStorage
+module.exports = createStore
