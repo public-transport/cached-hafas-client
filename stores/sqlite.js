@@ -57,20 +57,20 @@ VALUES ($id, $queryId, $when, $data)`
 // "atomic queries": Queries whose return values can only be cached together.
 // Example: Caching 1 of 3 journeys and reusing for other queries is impossible.
 
-const CREATE_ATOMICS_TABLE = `\
-CREATE TABLE IF NOT EXISTS atomics (
-	atomics_id CHARACTER(20) PRIMARY KEY,
+const CREATE_ATOMS_TABLE = `\
+CREATE TABLE IF NOT EXISTS atoms (
+	atoms_id CHARACTER(20) PRIMARY KEY,
 	created INT NOT NULL,
 	method VARCHAR(12) NOT NULL,
 	inputHash CHARACTER(32) NOT NULL,
 	data TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS atomics_created_idx ON atomics (created);
-CREATE INDEX IF NOT EXISTS atomics_inputHash_idx ON atomics (inputHash);
-CREATE INDEX IF NOT EXISTS atomics_data_idx ON atomics (data);`
+CREATE INDEX IF NOT EXISTS atoms_created_idx ON atoms (created);
+CREATE INDEX IF NOT EXISTS atoms_inputHash_idx ON atoms (inputHash);
+CREATE INDEX IF NOT EXISTS atoms_data_idx ON atoms (data);`
 
-const READ_ATOMIC = `\
-SELECT data FROM atomics
+const READ_ATOM = `\
+SELECT data FROM atoms
 WHERE
 	-- only find equal queries
 	method = $method
@@ -80,8 +80,8 @@ WHERE
 	AND created <= $createdMax
 LIMIT 1`
 
-const WRITE_ATOMIC = `\
-INSERT OR REPLACE INTO atomics
+const WRITE_ATOM = `\
+INSERT OR REPLACE INTO atoms
 (atomics_id, created, method, inputHash, data)
 VALUES ($id, $created, $method, $inputHash, $data)`
 
@@ -91,7 +91,7 @@ const createStore = (db) => {
 		db.exec([
 			CREATE_COLLECTION_QUERIES_TABLE,
 			CREATE_COLLECTIONS_TABLE,
-			CREATE_ATOMICS_TABLE
+			CREATE_ATOMS_TABLE
 		].join('\n'), cb)
 	}
 
@@ -156,10 +156,10 @@ const createStore = (db) => {
 		// })
 	}
 
-	const readAtomic = (method, inputHash, createdMin, createdMax) => {
-		debug('readAtomic', {method, inputHash, createdMin, createdMax})
+	const readAtom = (method, inputHash, createdMin, createdMax) => {
+		debug('readAtom', {method, inputHash, createdMin, createdMax})
 		return new Promise((resolve, reject) => {
-			db.get(READ_ATOMIC, {
+			db.get(READ_ATOM, {
 				'$method': method,
 				'$inputHash': inputHash,
 				'$createdMin': Math.floor(createdMin / 1000),
@@ -171,10 +171,10 @@ const createStore = (db) => {
 		})
 	}
 
-	const writeAtomic = (method, inputHash, created, val) => {
-		debug('writeAtomic', {method, inputHash, created, val})
+	const writeAtom = (method, inputHash, created, val) => {
+		debug('writeAtom', {method, inputHash, created, val})
 		return new Promise((resolve, reject) => {
-			db.run(WRITE_ATOMIC, {
+			db.run(WRITE_ATOM, {
 				'$id': randomBytes(10).toString('hex'),
 				'$created': created / 1000 | 0,
 				'$method': method,
@@ -191,8 +191,8 @@ const createStore = (db) => {
 		init,
 		readCollection,
 		writeCollection,
-		readAtomic,
-		writeAtomic
+		readAtom,
+		writeAtom
 	}
 }
 

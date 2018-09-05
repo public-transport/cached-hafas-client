@@ -24,7 +24,7 @@ const formatLocation = (loc) => {
 	throw new Error('invalid location!')
 }
 
-const STORAGE_METHODS = ['init', 'readCollection', 'writeCollection', 'readAtomic', 'writeAtomic']
+const STORAGE_METHODS = ['init', 'readCollection', 'writeCollection', 'readAtom', 'writeAtom']
 
 const createCachedHafas = (hafas, storage) => {
 	if (!isObj(storage)) throw new Error('storage must be an object')
@@ -87,7 +87,7 @@ const createCachedHafas = (hafas, storage) => {
 		const createdMin = createdMax - CACHE_PERIOD
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 
-		const cached = await storage.readAtomic(methodName, inputHash, createdMin, createdMax)
+		const cached = await storage.readAtom(methodName, inputHash, createdMin, createdMax)
 		if (cached) {
 			out.emit('hit', methodName, ...args, cached.length)
 			return cached
@@ -96,7 +96,7 @@ const createCachedHafas = (hafas, storage) => {
 
 		const created = Date.now()
 		const val = await hafas[methodName](...args)
-		await storage.writeAtomic(methodName, inputHash, created, val)
+		await storage.writeAtom(methodName, inputHash, created, val)
 		return val
 	}
 
