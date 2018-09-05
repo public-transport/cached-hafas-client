@@ -17,8 +17,39 @@ npm install hafas-client-cache
 
 ## Usage
 
+Because `cached-hafas-client` caches HAFAS responses by request, it is build on the assumption that HAFAS works deterministically. This is why, for example, you must pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/eddacd0091785155cdf734f1761d62dd9ab7ef06/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/eddacd0091785155cdf734f1761d62dd9ab7ef06/docs/arrivals.md).
+
 ```js
-todo
+// create HAFAS client
+const createHafas = require('vbb-hafas')
+const hafas = createHafas('hafas-client-cache example')
+
+// create in-memory DB
+const sqlite3 = require('sqlite3')
+const db = new sqlite3.Database(':memory:')
+
+// wrap HAFAS client with cache
+const withCache = require('cached-hafas-client')
+const cachedHafas = withCache(hafas, db)
+
+cachedHafas.init((err) => { // initialize the DB
+	if (err) return console.error(err)
+
+	const wollinerStr = '900000007105'
+	const husemannstr = '900000110511'
+	const when = new Date(Date.now() + 60 * 60 * 1000)
+
+	// will fetch from HAFAS
+	cachedHafas.departures(wollinerStr, {duration: 10, when})
+	.then(() => {
+		// within the time frame of a recent departures() call -> will read from cache
+		return cachedHafas.departures(wollinerStr, {
+			duration: 3, when: new Date(+when + 3 * 60 * 1000)
+		})
+	})
+	.then(console.log)
+	.catch(console.error)
+})
 ```
 
 
