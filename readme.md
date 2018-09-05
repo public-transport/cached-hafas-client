@@ -17,7 +17,7 @@ npm install cached-hafas-client
 
 ## Usage
 
-Because `cached-hafas-client` caches HAFAS responses by request, it is build on the assumption that HAFAS works deterministically. This is why, for example, you must pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/eddacd0091785155cdf734f1761d62dd9ab7ef06/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/eddacd0091785155cdf734f1761d62dd9ab7ef06/docs/arrivals.md).
+Because `cached-hafas-client` caches HAFAS responses by "request signature", it is build on the assumption that HAFAS works deterministically. This is why, for example, you must pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/eddacd0091785155cdf734f1761d62dd9ab7ef06/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/eddacd0091785155cdf734f1761d62dd9ab7ef06/docs/arrivals.md).
 
 ```js
 // create HAFAS client
@@ -50,6 +50,17 @@ cachedHafas.init((err) => { // initialize the DB
 	})
 	.then(console.log)
 	.catch(console.error)
+})
+```
+
+## Counting cache hits & misses
+
+```js
+cachedHafas.on('hit', (hafasClientMethod, ...args) => {
+	console.info('cache hit!', hafasClientMethod, ...args)
+})
+cachedHafas.on('miss', (hafasClientMethod, ...args) => {
+	console.info('cache miss!', hafasClientMethod, ...args)
 })
 ```
 

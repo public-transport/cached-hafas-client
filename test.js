@@ -28,7 +28,7 @@ const torfstr17 = {
 	longitude: 13.350042
 }
 
-const hafas = createHafas('hafas-client-cache test')
+const hafas = createHafas('cached-hafas-client test')
 const withMocksAndCache = (hafas, mocks) => {
 	const mocked = Object.assign(Object.create(hafas), mocks)
 	const db = new sqlite3.Database(':memory:')

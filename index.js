@@ -60,6 +60,24 @@ const createCachedHafas = (hafas, storage) => {
 		return vals
 	}
 
+	const atomWithCache = async (methodName, cacheKeyData, args) => {
+		const createdMax = Date.now()
+		const createdMin = createdMax - CACHE_PERIOD
+		const inputHash = hash(JSON.stringify(cacheKeyData))
+
+		const cached = await storage.readAtom(methodName, inputHash, createdMin, createdMax)
+		if (cached) {
+			out.emit('hit', methodName, ...args, cached.length)
+			return cached
+		}
+		out.emit('miss', methodName, ...args)
+
+		const created = Date.now()
+		const val = await hafas[methodName](...args)
+		await storage.writeAtom(methodName, inputHash, created, val)
+		return val
+	}
+
 	const depsOrArrs = (method) => {
 		const valToRow = (arrOrDep) => ({
 			when: arrOrDep.when,
@@ -82,26 +100,8 @@ const createCachedHafas = (hafas, storage) => {
 	const departures = depsOrArrs('departures')
 	const arrivals = depsOrArrs('arrivals')
 
-	const withCache = async (methodName, cacheKeyData, args) => {
-		const createdMax = Date.now()
-		const createdMin = createdMax - CACHE_PERIOD
-		const inputHash = hash(JSON.stringify(cacheKeyData))
-
-		const cached = await storage.readAtom(methodName, inputHash, createdMin, createdMax)
-		if (cached) {
-			out.emit('hit', methodName, ...args, cached.length)
-			return cached
-		}
-		out.emit('miss', methodName, ...args)
-
-		const created = Date.now()
-		const val = await hafas[methodName](...args)
-		await storage.writeAtom(methodName, inputHash, created, val)
-		return val
-	}
-
 	const journeys = (from, to, opt = {}) => {
-		return withCache('journeys', [
+		return atomWithCache('journeys', [
 			formatLocation(from),
 			formatLocation(to),
 			opt
@@ -109,11 +109,11 @@ const createCachedHafas = (hafas, storage) => {
 	}
 
 	const refreshJourney = (refreshToken, opt = {}) => {
-		return withCache('refreshJourney', [refreshToken, opt], [refreshToken, opt])
+		return atomWithCache('refreshJourney', [refreshToken, opt], [refreshToken, opt])
 	}
 
 	const trip = (id, lineName, opt = {}) => {
-		return withCache('trip', [
+		return atomWithCache('trip', [
 			id,
 			lineName,
 			omit(opt, ['when'])
@@ -121,12 +121,12 @@ const createCachedHafas = (hafas, storage) => {
 	}
 
 	const station = (id, opt = {}) => {
-		return withCache('station', [id, opt], [id, opt])
+		return atomWithCache('station', [id, opt], [id, opt])
 	}
 
 	// todo: cache individual locations, use a spatial index for querying
 	const nearby = (loc, opt = {}) => {
-		return withCache('nearby', [
+		return atomWithCache('nearby', [
 			formatLocation(loc),
 			opt
 		], [loc, opt])
@@ -134,7 +134,7 @@ const createCachedHafas = (hafas, storage) => {
 
 	// todo: cache individual movements, use a spatial index for querying
 	const radar = (bbox, opt = {}) => {
-		return withCache('radar', [bbox, opt], [bbox, opt])
+		return atomWithCache('radar', [bbox, opt], [bbox, opt])
 	}
 
 	const reachableFrom = (address, opt = {}) => {
@@ -145,7 +145,7 @@ const createCachedHafas = (hafas, storage) => {
 			cacheOpt.when = Math.round(new Date(cacheOpt.when) / 1000)
 		}
 
-		return withCache('reachableFrom', [
+		return atomWithCache('reachableFrom', [
 			address,
 			cacheOpt
 		], [address, opt])
