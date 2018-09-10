@@ -128,11 +128,12 @@ test('journeys: same arguments -> reads from cache', async (t) => {
 	const h = await withMocksAndCache(hafas, {journeys: spy})
 	const opt = {departure: when, stationLines: true}
 
-	await h.journeys(wollinerStr, husemannstr, opt)
+	const r1 = await h.journeys(wollinerStr, husemannstr, opt)
 	t.equal(spy.callCount, 1)
-	await h.journeys(wollinerStr, husemannstr, Object.assign({}, opt))
+	const r2 = await h.journeys(wollinerStr, husemannstr, Object.assign({}, opt))
 	t.equal(spy.callCount, 1)
-	// todo: results deep equal?
+
+	t.deepEqual(r1, r2)
 	t.end()
 })
 

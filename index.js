@@ -103,11 +103,22 @@ const createCachedHafas = (hafas, storage) => {
 	const arrivals = depsOrArrs('arrivals')
 
 	const journeys = (from, to, opt = {}) => {
+		// JSON does not support arrays with properties
+		const serialize = (journeys) => {
+			return JSON.stringify([journeys.earlierRef, journeys.laterRef, journeys])
+		}
+		const deserialize = (raw) => {
+			const [earlierRef, laterRef, journeys] = JSON.parse(raw)
+			journeys.earlierRef = earlierRef
+			journeys.laterRef = laterRef
+			return journeys
+		}
+
 		return atomWithCache('journeys', [
 			formatLocation(from),
 			formatLocation(to),
 			opt
-		], [from, to, opt])
+		], [from, to, opt], serialize, deserialize)
 	}
 
 	const refreshJourney = (refreshToken, opt = {}) => {
