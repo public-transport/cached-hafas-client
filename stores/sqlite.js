@@ -3,8 +3,10 @@
 const {randomBytes} = require('crypto')
 const debug = require('debug')('cached-hafas-client')
 
+const V = '1'
+
 const CREATE_COLLECTION_QUERIES_TABLE = `\
-CREATE TABLE IF NOT EXISTS collection_queries (
+CREATE TABLE IF NOT EXISTS collection_queries_${V} (
 	collection_queries_id CHARACTER(20) PRIMARY KEY,
 	created INT NOT NULL,
 	method VARCHAR(12) NOT NULL,
@@ -12,26 +14,32 @@ CREATE TABLE IF NOT EXISTS collection_queries (
 	duration INT NOT NULL,
 	inputHash CHARACTER(32) NOT NULL
 );
-CREATE INDEX IF NOT EXISTS collection_queries_created_idx ON collection_queries (created);
-CREATE INDEX IF NOT EXISTS collection_queries_method_idx ON collection_queries (method);
-CREATE INDEX IF NOT EXISTS collection_queries_when_idx ON collection_queries ("when");
-CREATE INDEX IF NOT EXISTS collection_queries_duration_idx ON collection_queries (duration);
-CREATE INDEX IF NOT EXISTS collection_queries_inputHash_idx ON collection_queries (inputHash);`
+CREATE INDEX IF NOT EXISTS collection_queries_${V}_created_idx
+	ON collection_queries_${V} (created);
+CREATE INDEX IF NOT EXISTS collection_queries_${V}_method_idx
+	ON collection_queries_${V} (method);
+CREATE INDEX IF NOT EXISTS collection_queries_${V}_when_idx
+	ON collection_queries_${V} ("when");
+CREATE INDEX IF NOT EXISTS collection_queries_${V}_duration_idx
+	ON collection_queries_${V} (duration);
+CREATE INDEX IF NOT EXISTS collection_queries_${V}_inputHash_idx
+	ON collection_queries_${V} (inputHash);`
 
 const CREATE_COLLECTIONS_TABLE = `\
 PRAGMA foreign_keys = ON;
-CREATE TABLE IF NOT EXISTS collections (
+CREATE TABLE IF NOT EXISTS collections_${V} (
 	collections_id CHARACTER(20) PRIMARY KEY,
 	query_id CHARACTER(20) NOT NULL,
 	"when" INT,
 	data TEXT NOT NULL,
-	FOREIGN KEY (query_id) REFERENCES collection_queries(collection_queries_id)
+	FOREIGN KEY (query_id) REFERENCES collection_queries_${V}(collection_queries_id)
 );
-CREATE INDEX IF NOT EXISTS collections_query_id_idx ON collections (query_id);`
+CREATE INDEX IF NOT EXISTS collections_${V}_query_id_idx
+	ON collections_${V} (query_id);`
 
 const READ_COLLECTIONS = `\
-SELECT collections.data FROM collection_queries
-LEFT JOIN collections
+SELECT collections.data FROM collection_queries_${V}
+LEFT JOIN collections_${V}
 	ON collection_queries.collection_queries_id = collections.query_id
 WHERE
 	-- only find equal queries
@@ -45,32 +53,35 @@ WHERE
 	AND (collection_queries."when" + duration) >= $whenMax`
 
 const WRITE_COLLECTION_QUERY = `\
-INSERT OR REPLACE INTO collection_queries
+INSERT OR REPLACE INTO collection_queries_${V}
 (collection_queries_id, method, created, "when", duration, inputHash)
 VALUES ($id, $method, $created, $when, $duration, $inputHash)`
 
 const WRITE_COLLECTIONS = `\
-INSERT INTO collections
+INSERT INTO collections_${V}
 (collections_id, query_id, "when", data)
 VALUES ($id, $queryId, $when, $data)`
 
-// "atomic queries": Queries whose return values can only be cached together.
+// "atom queries": Queries whose return values can only be cached together.
 // Example: Caching 1 of 3 journeys and reusing for other queries is impossible.
 
 const CREATE_ATOMS_TABLE = `\
-CREATE TABLE IF NOT EXISTS atoms (
+CREATE TABLE IF NOT EXISTS atoms_${V} (
 	atoms_id CHARACTER(20) PRIMARY KEY,
 	created INT NOT NULL,
 	method VARCHAR(12) NOT NULL,
 	inputHash CHARACTER(32) NOT NULL,
 	data TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS atoms_created_idx ON atoms (created);
-CREATE INDEX IF NOT EXISTS atoms_inputHash_idx ON atoms (inputHash);
-CREATE INDEX IF NOT EXISTS atoms_data_idx ON atoms (data);`
+CREATE INDEX IF NOT EXISTS atoms_${V}_created_idx
+	ON atoms_${V} (created);
+CREATE INDEX IF NOT EXISTS atoms_${V}_inputHash_idx
+	ON atoms_${V} (inputHash);
+CREATE INDEX IF NOT EXISTS atoms_${V}_data_idx
+	ON atoms_${V} (data);`
 
 const READ_ATOM = `\
-SELECT data FROM atoms
+SELECT data FROM atoms_${V}
 WHERE
 	-- only find equal queries
 	method = $method
@@ -81,7 +92,7 @@ WHERE
 LIMIT 1`
 
 const WRITE_ATOM = `\
-INSERT OR REPLACE INTO atoms
+INSERT OR REPLACE INTO atoms_${V}
 (atomics_id, created, method, inputHash, data)
 VALUES ($id, $created, $method, $inputHash, $data)`
 
