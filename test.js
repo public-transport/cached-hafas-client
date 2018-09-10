@@ -55,10 +55,12 @@ test('departures: same timespan -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.departures)
 	const h = await withMocksAndCache(hafas, {departures: spy})
 
-	await h.departures(wollinerStr, {when, duration: 10})
+	const r1 = await h.departures(wollinerStr, {when, duration: 10})
 	t.equal(spy.callCount, 1)
-	await h.departures(wollinerStr, {when, duration: 10})
+	const r2 = await h.departures(wollinerStr, {when, duration: 10})
 	t.equal(spy.callCount, 1)
+
+	t.deepEqual(r1, r2)
 	t.end()
 })
 
@@ -91,10 +93,12 @@ test('arrivals: same timespan -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.arrivals)
 	const h = await withMocksAndCache(hafas, {arrivals: spy})
 
-	await h.arrivals(wollinerStr, {when, duration: 10})
+	const r1 = await h.arrivals(wollinerStr, {when, duration: 10})
 	t.equal(spy.callCount, 1)
-	await h.arrivals(wollinerStr, {when, duration: 10})
+	const r2 = await h.arrivals(wollinerStr, {when, duration: 10})
 	t.equal(spy.callCount, 1)
+
+	t.deepEqual(r1, r2)
 	t.end()
 })
 
@@ -170,10 +174,12 @@ test('refreshJourney: same arguments -> reads from cache', async (t) => {
 	const refreshToken = await pJourneyRefreshToken
 	const opt = {stopovers: true}
 
-	await h.refreshJourney(refreshToken, opt)
+	const r1 = await h.refreshJourney(refreshToken, opt)
 	t.equal(spy.callCount, 1)
-	await h.refreshJourney(refreshToken, Object.assign({}, opt))
+	const r2 = await h.refreshJourney(refreshToken, Object.assign({}, opt))
 	t.equal(spy.callCount, 1)
+
+	t.deepEqual(r1, r2)
 	t.end()
 })
 
@@ -211,10 +217,12 @@ test('trip: same arguments -> reads from cache', async (t) => {
 	const {id, lineName} = await pTrip
 	const opt = {when, stopovers: true}
 
-	await h.trip(id, lineName, opt)
+	const r1 = await h.trip(id, lineName, opt)
 	t.equal(spy.callCount, 1)
-	await h.trip(id, lineName, Object.assign({}, opt))
+	const r2 = await h.trip(id, lineName, Object.assign({}, opt))
 	t.equal(spy.callCount, 1)
+
+	t.deepEqual(r1, r2)
 	t.end()
 })
 
@@ -244,10 +252,12 @@ test('station: same arguments -> reads from cache', async (t) => {
 	const id = '900000068201'
 	const opt = {stationLines: true}
 
-	await h.station(id, opt)
+	const r1 = await h.station(id, opt)
 	t.equal(spy.callCount, 1)
-	await h.station(id, Object.assign({}, opt))
+	const r2 = await h.station(id, Object.assign({}, opt))
 	t.equal(spy.callCount, 1)
+
+	t.deepEqual(r1, r2)
 	t.end()
 })
 
@@ -275,10 +285,12 @@ test('nearby: same arguments -> reads from cache', async (t) => {
 	const loc = {type: 'location', latitude: 52.5137344, longitude: 13.4744798}
 	const opt = {distance: 400, stationLines: true}
 
-	await h.nearby(loc, opt)
+	const r1 = await h.nearby(loc, opt)
 	t.equal(spy.callCount, 1)
-	await h.nearby(loc, Object.assign({}, opt))
+	const r2 = await h.nearby(loc, Object.assign({}, opt))
 	t.equal(spy.callCount, 1)
+
+	t.deepEqual(r1, r2)
 	t.end()
 })
 
@@ -311,10 +323,12 @@ test('radar: same arguments -> reads from cache', async (t) => {
 	}
 	const opt = {frames: 1, results: 100}
 
-	await h.radar(bbox, opt)
+	const r1 = await h.radar(bbox, opt)
 	t.equal(spy.callCount, 1)
-	await h.radar(bbox, Object.assign({}, opt))
+	const r2 = await h.radar(bbox, Object.assign({}, opt))
 	t.equal(spy.callCount, 1)
+
+	t.deepEqual(r1, r2)
 	t.end()
 })
 
@@ -347,10 +361,12 @@ test('reachableFrom: same arguments -> reads from cache', async (t) => {
 	const opt = {maxTransfers: 2, maxDuration: 30, when: +when}
 	const newWhen = +when + 100
 
-	await h.reachableFrom(torfstr17, opt)
+	const r1 = await h.reachableFrom(torfstr17, opt)
 	t.equal(spy.callCount, 1)
-	await h.reachableFrom(torfstr17, Object.assign({}, opt, {when: newWhen}))
+	const r2 = await h.reachableFrom(torfstr17, Object.assign({}, opt, {when: newWhen}))
 	t.equal(spy.callCount, 1)
+
+	t.deepEqual(r1, r2)
 	t.end()
 })
 
