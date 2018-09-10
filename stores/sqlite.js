@@ -102,6 +102,7 @@ const createStore = (db) => {
 			whenMin, whenMax,
 			createdMin, createdMax
 		} = args
+		const rowToVal = args.rowToVal || (row => JSON.parse(row.data))
 
 		return new Promise((resolve, reject) => {
 			db.all(READ_COLLECTIONS, {
@@ -113,8 +114,12 @@ const createStore = (db) => {
 				'$whenMax': whenMax / 1000 | 0
 			}, (err, rows) => {
 				if (err) return reject(err)
-				// todo: expose `.created`
-				resolve(rows.map(row => JSON.parse(row.data)))
+				try {
+					// todo: expose `.created`
+					resolve(rows.map(rowToVal))
+				} catch (err) {
+					reject(err)
+				}
 			})
 		})
 	}
@@ -156,8 +161,10 @@ const createStore = (db) => {
 		// })
 	}
 
-	const readAtom = (method, inputHash, createdMin, createdMax) => {
-		debug('readAtom', {method, inputHash, createdMin, createdMax})
+	const readAtom = (method, inputHash, createdMin, createdMax, deserialize) => {
+		debug('readAtom', {method, inputHash, createdMin, createdMax, deserialize})
+		deserialize = deserialize || JSON.parse
+
 		return new Promise((resolve, reject) => {
 			db.get(READ_ATOM, {
 				'$method': method,
@@ -166,20 +173,27 @@ const createStore = (db) => {
 				'$createdMax': Math.ceil(createdMax / 1000)
 			}, (err, row) => {
 				if (err) return reject(err)
-				resolve(row && row.data ? JSON.parse(row.data) : null)
+				if (!row || !row.data) return resolve(null)
+				try {
+					resolve(deserialize(row.data))
+				} catch (err) {
+					reject(err)
+				}
 			})
 		})
 	}
 
-	const writeAtom = (method, inputHash, created, val) => {
-		debug('writeAtom', {method, inputHash, created, val})
+	const writeAtom = (method, inputHash, created, val, serialize) => {
+		debug('writeAtom', {method, inputHash, created, val, serialize})
+		serialize = serialize || JSON.stringify
+
 		return new Promise((resolve, reject) => {
 			db.run(WRITE_ATOM, {
 				'$id': randomBytes(10).toString('hex'),
 				'$created': created / 1000 | 0,
 				'$method': method,
 				'$inputHash': inputHash,
-				'$data': JSON.stringify(val)
+				'$data': serialize(val)
 			}, (err) => {
 				if (err) reject(err)
 				else resolve()

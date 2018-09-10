@@ -34,7 +34,7 @@ const createCachedHafas = (hafas, storage) => {
 		}
 	}
 
-	const collectionWithCache = async (method, cacheKeyData, whenMin, duration, args, valToRow) => {
+	const collectionWithCache = async (method, cacheKeyData, whenMin, duration, args, rowToVal, valToRow) => {
 		const createdMax = Date.now()
 		const createdMin = createdMax - CACHE_PERIOD
 		const inputHash = hash(JSON.stringify(cacheKeyData))
@@ -42,7 +42,8 @@ const createCachedHafas = (hafas, storage) => {
 		const values = await storage.readCollection({
 			method, inputHash,
 			whenMin, whenMax: whenMin + duration,
-			createdMin, createdMax
+			createdMin, createdMax,
+			rowToVal
 		})
 		if (values.length > 0) {
 			out.emit('hit', method, ...args, values.length)
@@ -60,12 +61,12 @@ const createCachedHafas = (hafas, storage) => {
 		return vals
 	}
 
-	const atomWithCache = async (methodName, cacheKeyData, args) => {
+	const atomWithCache = async (methodName, cacheKeyData, args, serialize = null, deserialize = null) => {
 		const createdMax = Date.now()
 		const createdMin = createdMax - CACHE_PERIOD
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 
-		const cached = await storage.readAtom(methodName, inputHash, createdMin, createdMax)
+		const cached = await storage.readAtom(methodName, inputHash, createdMin, createdMax, deserialize)
 		if (cached) {
 			out.emit('hit', methodName, ...args, cached.length)
 			return cached
@@ -74,11 +75,12 @@ const createCachedHafas = (hafas, storage) => {
 
 		const created = Date.now()
 		const val = await hafas[methodName](...args)
-		await storage.writeAtom(methodName, inputHash, created, val)
+		await storage.writeAtom(methodName, inputHash, created, val, serialize)
 		return val
 	}
 
 	const depsOrArrs = (method) => {
+		const rowToVal = row => JSON.parse(row.data)
 		const valToRow = (arrOrDep) => ({
 			when: arrOrDep.when,
 			data: JSON.stringify(arrOrDep)
@@ -92,7 +94,7 @@ const createCachedHafas = (hafas, storage) => {
 			return collectionWithCache(method, [
 				stopId,
 				omit(opt, ['when', 'duration'])
-			], whenMin, duration, [stopId, opt], valToRow)
+			], whenMin, duration, [stopId, opt], rowToVal, valToRow)
 		}
 		return query
 	}
