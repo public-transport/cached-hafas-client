@@ -7,6 +7,7 @@ const sqlite3 = DEBUG ? require('sqlite3').verbose() : require('sqlite3')
 const createHafas = require('vbb-hafas')
 const tape = require('tape')
 const tapePromise = require('tape-promise').default
+const pRetry = require('p-retry')
 
 const createSqliteStore = require('./stores/sqlite')
 const createCachedHafas = require('.')
@@ -376,7 +377,11 @@ test('reachableFrom: same arguments -> reads from cache', async (t) => {
 
 test('reachableFrom: different arguments -> fetches new', async (t) => {
 	// todo: make this test reliable, e.g. by retrying with exponential pauses
-	const spy = createSpy(hafas.reachableFrom)
+	const reachableFromWithRetry = (station, opt) => {
+		const run = () => hafas.reachableFrom(station, opt)
+		return pRetry(run, {retries: 5, minTimeout: 2000, factor: 2})
+	}
+	const spy = createSpy(reachableFromWithRetry)
 	const h = await withMocksAndCache(hafas, {reachableFrom: spy})
 
 	const newAddr = Object.assign({}, torfstr17, {address: torfstr17.address + 'foo'})
