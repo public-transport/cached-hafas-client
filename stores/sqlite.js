@@ -38,9 +38,9 @@ CREATE INDEX IF NOT EXISTS collections_${V}_query_id_idx
 	ON collections_${V} (query_id);`
 
 const READ_COLLECTIONS = `\
-SELECT collections.data FROM collection_queries_${V}
+SELECT collections_${V}.data FROM collection_queries_${V}
 LEFT JOIN collections_${V}
-	ON collection_queries.collection_queries_id = collections.query_id
+	ON collection_queries_${V}.collection_queries_id = collections_${V}.query_id
 WHERE
 	-- only find equal queries
 	method = $method
@@ -49,8 +49,8 @@ WHERE
 	AND created >= $createdMin
 	AND created <= $createdMax
 	-- find queries that cover the when -> (when + duration) period
-	AND collection_queries."when" <= $whenMin
-	AND (collection_queries."when" + duration) >= $whenMax`
+	AND collection_queries_${V}."when" <= $whenMin
+	AND (collection_queries_${V}."when" + duration) >= $whenMax`
 
 const WRITE_COLLECTION_QUERY = `\
 INSERT OR REPLACE INTO collection_queries_${V}
