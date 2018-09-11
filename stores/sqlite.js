@@ -93,7 +93,7 @@ LIMIT 1`
 
 const WRITE_ATOM = `\
 INSERT OR REPLACE INTO atoms_${V}
-(atomics_id, created, method, inputHash, data)
+(atoms_id, created, method, inputHash, data)
 VALUES ($id, $created, $method, $inputHash, $data)`
 
 const createStore = (db) => {

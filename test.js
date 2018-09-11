@@ -166,6 +166,10 @@ const pJourneyRefreshToken = hafas.journeys(wollinerStr, husemannstr, {
 	results: 1, stopovers: false, remarks: false
 })
 .then(([journey]) => journey.refreshToken)
+pJourneyRefreshToken.catch((err) => {
+	console.error(err)
+	process.exitCode = 1
+})
 
 test('refreshJourney: same arguments -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.refreshJourney)
