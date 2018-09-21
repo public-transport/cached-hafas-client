@@ -1,7 +1,7 @@
 'use strict'
 
 const {randomBytes} = require('crypto')
-const debug = require('debug')('cached-hafas-client')
+const debug = require('debug')('cached-hafas-client:sqlite')
 
 const V = '1'
 

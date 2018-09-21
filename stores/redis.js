@@ -1,7 +1,7 @@
 'use strict'
 
 const {randomBytes} = require('crypto')
-const debug = require('debug')('cached-hafas-client')
+const debug = require('debug')('cached-hafas-client:redis')
 const commonPrefix = require('common-prefix')
 
 const VERSION = '1'
@@ -14,10 +14,12 @@ const TTL = 60 * 5 // todo: make customizable
 
 const createStore = (db) => {
 	const init = (cb) => {
+		debug('init')
 		setImmediate(cb, null)
 	}
 
 	const read = (key) => {
+		debug('read', key)
 		return new Promise((resolve, reject) => {
 			db.get(key, (err, val) => {
 				if (err) reject(err)
@@ -27,6 +29,7 @@ const createStore = (db) => {
 	}
 
 	const writeWithTtl = (key, val, ttl) => {
+		debug('write', key, val.length)
 		return new Promise((resolve, reject) => {
 			db.set(key, val, (err) => {
 				if (err) return reject(err)
@@ -40,6 +43,7 @@ const createStore = (db) => {
 
 	// todo [breaking]: use async iteration using `Symbol.asyncIterator`
 	const scan = (pattern) => {
+		debug('scan', pattern)
 		let cursor = '0'
 		const iterate = () => {
 			return new Promise((resolve, reject) => {
