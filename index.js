@@ -68,7 +68,7 @@ const createCachedHafas = (hafas, storage) => {
 
 		const cached = await storage.readAtom(methodName, inputHash, createdMin, createdMax, deserialize)
 		if (cached) {
-			out.emit('hit', methodName, ...args, cached.length)
+			out.emit('hit', methodName, ...args)
 			return cached
 		}
 		out.emit('miss', methodName, ...args)

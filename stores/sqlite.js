@@ -30,6 +30,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS collections_${V} (
 	collections_id CHARACTER(20) PRIMARY KEY,
 	query_id CHARACTER(20) NOT NULL,
+	i INT,
 	"when" INT,
 	data TEXT NOT NULL,
 	FOREIGN KEY (query_id) REFERENCES collection_queries_${V}(collection_queries_id)
@@ -50,7 +51,11 @@ WHERE
 	AND created <= $createdMax
 	-- find queries that cover the when -> (when + duration) period
 	AND collection_queries_${V}."when" <= $whenMin
-	AND (collection_queries_${V}."when" + duration) >= $whenMax`
+	AND (collection_queries_${V}."when" + duration) >= $whenMax
+	-- only get items in the when -> (when + duration) period
+	AND collections_${V}."when" >= $whenMin
+	AND collections_${V}."when" <= $whenMax
+ORDER BY collections_${V}.i ASC`
 
 const WRITE_COLLECTION_QUERY = `\
 INSERT OR REPLACE INTO collection_queries_${V}
@@ -59,8 +64,8 @@ VALUES ($id, $method, $created, $when, $duration, $inputHash)`
 
 const WRITE_COLLECTIONS = `\
 INSERT INTO collections_${V}
-(collections_id, query_id, "when", data)
-VALUES ($id, $queryId, $when, $data)`
+(collections_id, query_id, i, "when", data)
+VALUES ($id, $queryId, $i, $when, $data)`
 
 // "atom queries": Queries whose return values can only be cached together.
 // Example: Caching 1 of 3 journeys and reusing for other queries is impossible.
@@ -157,11 +162,14 @@ const createStore = (db) => {
 
 		// todo: use `cmd = db.prepare; cmd.bind` for performance!
 		// const cmd = db.prepare(WRITE_COLLECTIONS)
-		for (let row of rows) {
+		for (let i = 0; i < rows.length; i++) {
+			const row = rows[i]
+
 			await new Promise((resolve, reject) => {
 				db.run(WRITE_COLLECTIONS, {
 					'$id': randomBytes(10).toString('hex'),
 					'$queryId': queryId,
+					'$i': i,
 					'$when': new Date(row.when) / 1000 | 0, // todo
 					'$data': row.data
 				}, err => err ? reject(err) : resolve())
