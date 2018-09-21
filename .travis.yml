@@ -3,6 +3,13 @@ language: node_js
 node_js:
   - 'stable'
   - '8'
+addons:
+  apt:
+    packages:
+    - redis-server
+script:
+  - (redis-server & )
+  - npm test
 cache:
   directories:
   - node_modules
