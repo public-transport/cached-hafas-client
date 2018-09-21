@@ -17,6 +17,15 @@ const createStore = (db) => {
 		setImmediate(cb, null)
 	}
 
+	const read = (key) => {
+		return new Promise((resolve, reject) => {
+			db.get(key, (err, val) => {
+				if (err) reject(err)
+				else resolve(val)
+			})
+		})
+	}
+
 	const writeWithTtl = (key, val, ttl) => {
 		return new Promise((resolve, reject) => {
 			db.set(key, val, (err) => {
@@ -45,16 +54,64 @@ const createStore = (db) => {
 		return {next: iterate}
 	}
 
-	const readCollection = (args) => {
-		debug('readCollection', args)
+	const findMatchingCollection = async (args) => {
 		const {
 			method, inputHash,
-			whenMin, whenMax,
-			createdMin, createdMax
+			whenMin, whenMax
 		} = args
+		const createdMin = Math.floor(args.createdMin / 1000)
+		const createdMax = Math.ceil(args.createdMax / 1000)
+
+		// todo: scan in reverse order to, when in doubt, get the latest collection
+		const scanner = scan(commonPrefix([
+			[VERSION, COLLECTIONS, method, inputHash, createdMin].join(':'),
+			[VERSION, COLLECTIONS, method, inputHash, createdMax].join(':')
+		]) + '*')
+		while (true) {
+			const {done, value: keys} = await scanner.next()
+
+			for (let key of keys) {
+				const created = parseInt(key.split(':')[4])
+				if (Number.isNaN(created) || created < createdMin || created > createdMax) continue
+
+				const {when, duration, id} = JSON.parse(await read(key))
+				if (when <= whenMin && (when + duration) >= whenMax) return id
+			}
+
+			if (done) return null
+		}
+	}
+
+	const readCollection = async (args) => {
+		debug('readCollection', args)
+		const whenMin = Math.floor(args.whenMin / 1000)
+		const whenMax = Math.ceil(args.whenMax / 1000)
 		const rowToVal = args.rowToVal || (row => JSON.parse(row.data))
 
-		// todo
+		const id = await findMatchingCollection(args)
+		if (!id) return []
+
+		const prefix = [VERSION, COLLECTIONS_ROWS, id].join(':') + ':'
+		const scanner = scan(prefix + '*')
+		const rows = []
+		while (true) {
+			const {done, value: keys} = await scanner.next()
+
+			for (let key of keys) {
+				const keyParts = key.split(':')
+
+				const when = parseInt(keyParts[3])
+				if (Number.isNaN(when) || when < whenMin || when > whenMax) continue
+
+				const data = await read(key)
+				rows.push([
+					parseInt(keyParts[4]), // i
+					rowToVal({data})
+				])
+			}
+
+			if (done) return rows.sort((a, b) => a[0] - b[0]).map(row => row[1])
+		}
 	}
 
 	const writeCollection = async (args) => {
@@ -66,7 +123,20 @@ const createStore = (db) => {
 		} = args
 		const created = Math.round(args.created / 1000)
 
-		// todo
+		const collectionId = randomBytes(10).toString('hex')
+		await writeWithTtl([
+			VERSION, COLLECTIONS, method, inputHash, created
+		].join(':'), JSON.stringify({
+			id: collectionId,
+			when, duration
+		}), TTL)
+
+		await Promise.all(rows.map((row, i) => {
+			const t = Math.round(new Date(row.when) / 1000)
+			if (Number.isNaN(t)) throw new Error(`rows[${i}].when must be an ISO 8601 string`)
+			const key = [VERSION, COLLECTIONS_ROWS, collectionId, t, i].join(':')
+			return writeWithTtl(key, row.data, TTL)
+		}))
 	}
 
 	// atomics
