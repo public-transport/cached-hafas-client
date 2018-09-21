@@ -1,13 +1,18 @@
 'use strict'
 
 const createHafas = require('vbb-hafas')
-const sqlite3 = require('sqlite3')
+const {createClient: createRedis} = require('redis')
 const withCache = require('.')
-const createSqliteStore = require('./stores/sqlite')
+const createRedisStore = require('./stores/redis')
+
+// const sqlite3 = require('sqlite3')
+// const createSqliteStore = require('./stores/sqlite')
+// const db = new sqlite3.Database(':memory:')
+// const store = createSqliteStore(db)
 
 const hafas = createHafas('cached-hafas-client example')
-const db = new sqlite3.Database(':memory:')
-const store = createSqliteStore(db)
+const db = createRedis()
+const store = createRedisStore(db)
 const cachedHafas = withCache(hafas, store)
 
 cachedHafas.on('hit', (method, ...args) => console.info('cache hit!', method, ...args))

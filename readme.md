@@ -7,6 +7,13 @@
 ![ISC-licensed](https://img.shields.io/github/license/derhuerst/cached-hafas-client.svg)
 [![chat with me on Gitter](https://img.shields.io/badge/chat%20with%20me-on%20gitter-512e92.svg)](https://gitter.im/derhuerst)
 
+`cached-hafas-client` is split into two parts: the core logic and stores; You can pick the store implementation that fits your use case best. Right now the following stores are implemented:
+
+store name | built on top of | notes
+-----------|-----------------|------
+[`redis`](stores/redis.js) | [Redis](https://redis.io/) |
+[`sqlite`](stores/sqlite.js) | [SQLite](https://www.sqlite.org/) | TTL not implemented yet
+
 
 ## Installation
 
@@ -22,12 +29,12 @@ Because `cached-hafas-client` caches HAFAS responses by "request signature", it 
 ```js
 // create HAFAS client
 const createHafas = require('vbb-hafas')
-const hafas = createHafas('cached-hafas-client example')
+const hafas = createHafas('my-awesome-program')
 
-// create in-memory SQLite store
-const sqlite3 = require('sqlite3')
-const createSqliteStore = require('cached-hafas-client/stores/sqlite')
-const store = createSqliteStore(new sqlite3.Database(':memory:'))
+// create a store backed by Redis
+const {createClient: createRedis} = require('redis')
+const createRedisStore = require('cached-hafas-client/stores/redis')
+const store = createRedisStore(createRedis)
 
 // wrap HAFAS client with cache
 const withCache = require('cached-hafas-client')
