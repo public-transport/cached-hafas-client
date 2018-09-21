@@ -4,6 +4,12 @@ const {randomBytes} = require('crypto')
 const debug = require('debug')('cached-hafas-client')
 const commonPrefix = require('common-prefix')
 
+const VERSION = '1'
+
+const COLLECTIONS = 'c'
+const COLLECTIONS_ROWS = 'r'
+const ATOMS = 'a'
+
 const TTL = 60 * 5 // todo: make customizable
 
 const createStore = (db) => {
@@ -23,22 +29,20 @@ const createStore = (db) => {
 		})
 	}
 
-	// todo [breaking]: use async iteration
-	const scan = (pattern, cb) => {
+	// todo [breaking]: use async iteration using `Symbol.asyncIterator`
+	const scan = (pattern) => {
 		let cursor = '0'
 		const iterate = () => {
-			db.scan(cursor, 'MATCH', pattern, 'COUNT', '30', (err, res) => {
-				if (err) return cb(err)
-				cursor = res[0]
-
-				const abort = cb(null, res[1])
-				if (abort === true) return cb(null)
-
-				if (cursor === '0') return cb(null)
-				iterate()
+			return new Promise((resolve, reject) => {
+				db.scan(cursor, 'MATCH', pattern, 'COUNT', '30', (err, res) => {
+					if (err) return reject(err)
+					cursor = res[0]
+					resolve({done: cursor === '0', value: res[1]})
+				})
 			})
 		}
-		iterate()
+
+		return {next: iterate}
 	}
 
 	const readCollection = (args) => {
@@ -69,45 +73,32 @@ const createStore = (db) => {
 	// method:inputHash:created:id
 	// todo: this fails with `created` timestamps of different lengths (2033)
 
-	const readAtom = (method, inputHash, createdMin, createdMax, deserialize) => {
+	const readAtom = async (method, inputHash, createdMin, createdMax, deserialize) => {
 		debug('readAtom', {method, inputHash, createdMin, createdMax, deserialize})
 		createdMin = Math.floor(createdMin / 1000)
 		createdMax = Math.ceil(createdMax / 1000)
 		deserialize = deserialize || JSON.parse
 
 		const keysPrefix = commonPrefix([
-			[method, inputHash, createdMin].join(':') + ':',
-			[method, inputHash, createdMax].join(':') + ':'
+			[VERSION, ATOMS, method, inputHash, createdMin].join(':'),
+			[VERSION, ATOMS, method, inputHash, createdMax].join(':')
 		])
 
-		return new Promise((resolve, reject) => {
-			// todo: scan in reverse order to, when in doubt, get the latest item
-			scan(keysPrefix + '*', (err, res) => {
-				if (err) return reject(err)
-				if (!res) return resolve(null)
+		// todo: scan in reverse order to, when in doubt, get the latest item
+		const scanner = scan(keysPrefix + '*')
+		while (true) {
+			const {done, value: keys} = await scanner.next()
 
-				for (let key of res) {
-					const created = parseInt(key.split(':')[2])
-					if (Number.isNaN(created) || created < createdMin || created > createdMax) continue
+			for (let key of keys) {
+				const created = parseInt(key.split(':')[4])
+				if (Number.isNaN(created) || created < createdMin || created > createdMax) continue
 
-					resolve(key)
-					return true // abort scanning
-				}
-			})
-		})
-		.then((key) => {
-			if (!key) return null
-			return new Promise((resolve, reject) => {
-				db.get(key, (err, val) => {
-					if (err) return reject(err)
-					try {
-						resolve(deserialize(val))
-					} catch (err) {
-						reject(err)
-					}
-				})
-			})
-		})
+				const val = await read(key)
+				return deserialize(val)
+			}
+
+			if (done) return null
+		}
 	}
 
 	const writeAtom = (method, inputHash, created, val, serialize) => {
@@ -115,8 +106,7 @@ const createStore = (db) => {
 		created = Math.round(created / 1000)
 		serialize = serialize || JSON.stringify
 
-		const id = randomBytes(4).toString('hex')
-		const key = [method, inputHash, created, id].join(':')
+		const key = [VERSION, ATOMS, method, inputHash, created].join(':')
 		return writeWithTtl(key, serialize(val), TTL)
 	}
 
