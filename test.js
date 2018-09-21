@@ -4,12 +4,14 @@ const DEBUG = process.env.NODE_DEBUG === 'cached-hafas-client'
 
 const {DateTime} = require('luxon')
 const sqlite3 = DEBUG ? require('sqlite3').verbose() : require('sqlite3')
+const {createClient: createRedis} = require('redis')
 const createHafas = require('vbb-hafas')
 const tape = require('tape')
 const tapePromise = require('tape-promise').default
 const pRetry = require('p-retry')
 
 const createSqliteStore = require('./stores/sqlite')
+const createRedisStore = require('./stores/redis')
 const createCachedHafas = require('.')
 
 const when = new Date(DateTime.fromMillis(Date.now(), {
@@ -29,18 +31,6 @@ const torfstr17 = {
 	longitude: 13.350042
 }
 
-const hafas = createHafas('cached-hafas-client test')
-const withMocksAndCache = (hafas, mocks) => {
-	const mocked = Object.assign(Object.create(hafas), mocks)
-	const db = new sqlite3.Database(':memory:')
-	if (DEBUG) db.on('profile', query => console.debug(query))
-	const store = createSqliteStore(db)
-	const cachedMocked = createCachedHafas(mocked, store)
-	return new Promise((resolve, reject) => {
-		cachedMocked.init(err => err ? reject(err) : resolve(cachedMocked))
-	})
-}
-
 const createSpy = (origFn) => {
 	const spyFn = (...args) => {
 		spyFn.callCount++
@@ -52,9 +42,34 @@ const createSpy = (origFn) => {
 
 const test = tapePromise(tape)
 
-test('departures: same timespan -> reads from cache', async (t) => {
+const hafas = createHafas('cached-hafas-client test')
+
+const createDb = () => {
+	const db = new sqlite3.Database(':memory:')
+	if (DEBUG) db.on('profile', query => console.debug(query))
+	const teardown = () => {
+		db.close()
+		return Promise.resolve()
+	}
+	return Promise.resolve({db, teardown})
+}
+
+const withMocksAndCache = async (hafas, mocks) => {
+	const mocked = Object.assign(Object.create(hafas), mocks)
+	const {db, teardown} = await createDb()
+	const store = createSqliteStore(db)
+	const cachedMocked = createCachedHafas(mocked, store)
+	await new Promise((resolve, reject) => {
+		cachedMocked.init(err => err ? reject(err) : resolve())
+	})
+	return {hafas: cachedMocked, teardown}
+}
+
+const storeName = 'sqlite'
+
+test(storeName + ' departures: same timespan -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.departures)
-	const h = await withMocksAndCache(hafas, {departures: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
 
 	const r1 = await h.departures(wollinerStr, {when, duration: 10})
 	t.equal(spy.callCount, 1)
@@ -62,37 +77,48 @@ test('departures: same timespan -> reads from cache', async (t) => {
 	t.equal(spy.callCount, 1)
 
 	t.deepEqual(r1, r2)
+	await teardown()
 	t.end()
 })
 
-test('departures: shorter timespan -> reads from cache', async (t) => {
+test(storeName + ' departures: shorter timespan -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.departures)
-	const h = await withMocksAndCache(hafas, {departures: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
 
-	await h.departures(wollinerStr, {when, duration: 10})
+	const allDeps = await h.departures(wollinerStr, {when, duration: 10})
 	t.equal(spy.callCount, 1)
-	await h.departures(wollinerStr, {
-		when: new Date(+when + 3 * minute),
+
+	const when2 = +new Date(+when + 3 * minute)
+	const expectedDeps = allDeps.filter((dep) => {
+		const w = +new Date(dep.when)
+		return w >= when2 && w <= (3 * minute + when2)
+	})
+
+	const actualDeps = await h.departures(wollinerStr, {
+		when: when2,
 		duration: 3
 	})
 	t.equal(spy.callCount, 1)
+	t.deepEqual(actualDeps.map(dep => dep.when), expectedDeps.map(dep => dep.when))
+	await teardown()
 	t.end()
 })
 
-test('departures: longer timespan -> fetches new', async (t) => {
+test(storeName + ' departures: longer timespan -> fetches new', async (t) => {
 	const spy = createSpy(hafas.departures)
-	const h = await withMocksAndCache(hafas, {departures: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
 
 	await h.departures(wollinerStr, {when, duration: 5})
 	t.equal(spy.callCount, 1)
 	await h.departures(wollinerStr, {when, duration: 10})
 	t.equal(spy.callCount, 2)
+	await teardown()
 	t.end()
 })
 
-test('arrivals: same timespan -> reads from cache', async (t) => {
+test(storeName + ' arrivals: same timespan -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.arrivals)
-	const h = await withMocksAndCache(hafas, {arrivals: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {arrivals: spy})
 
 	const r1 = await h.arrivals(wollinerStr, {when, duration: 10})
 	t.equal(spy.callCount, 1)
@@ -100,12 +126,13 @@ test('arrivals: same timespan -> reads from cache', async (t) => {
 	t.equal(spy.callCount, 1)
 
 	t.deepEqual(r1, r2)
+	await teardown()
 	t.end()
 })
 
-test('arrivals: shorter timespan -> reads from cache', async (t) => {
+test(storeName + ' arrivals: shorter timespan -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.arrivals)
-	const h = await withMocksAndCache(hafas, {arrivals: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {arrivals: spy})
 
 	await h.arrivals(wollinerStr, {when, duration: 10})
 	t.equal(spy.callCount, 1)
@@ -114,23 +141,25 @@ test('arrivals: shorter timespan -> reads from cache', async (t) => {
 		duration: 3
 	})
 	t.equal(spy.callCount, 1)
+	await teardown()
 	t.end()
 })
 
-test('arrivals: longer timespan -> fetches new', async (t) => {
+test(storeName + ' arrivals: longer timespan -> fetches new', async (t) => {
 	const spy = createSpy(hafas.arrivals)
-	const h = await withMocksAndCache(hafas, {arrivals: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {arrivals: spy})
 
 	await h.arrivals(wollinerStr, {when, duration: 5})
 	t.equal(spy.callCount, 1)
 	await h.arrivals(wollinerStr, {when, duration: 10})
 	t.equal(spy.callCount, 2)
+	await teardown()
 	t.end()
 })
 
-test('journeys: same arguments -> reads from cache', async (t) => {
+test(storeName + ' journeys: same arguments -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.journeys)
-	const h = await withMocksAndCache(hafas, {journeys: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {journeys: spy})
 	const opt = {departure: when, stationLines: true}
 
 	const r1 = await h.journeys(wollinerStr, husemannstr, opt)
@@ -139,12 +168,13 @@ test('journeys: same arguments -> reads from cache', async (t) => {
 	t.equal(spy.callCount, 1)
 
 	t.deepEqual(r1, r2)
+	await teardown()
 	t.end()
 })
 
-test('journeys: different arguments -> fetches new', async (t) => {
+test(storeName + ' journeys: different arguments -> fetches new', async (t) => {
 	const spy = createSpy(hafas.journeys)
-	const h = await withMocksAndCache(hafas, {journeys: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {journeys: spy})
 
 	await h.journeys(wollinerStr, husemannstr, {departure: when, stationLines: true})
 	t.equal(spy.callCount, 1)
@@ -159,6 +189,7 @@ test('journeys: different arguments -> fetches new', async (t) => {
 	await h.journeys(wollinerStr, husemannstr, {departure: when, stopovers: true})
 	t.equal(spy.callCount, 4)
 
+await teardown()
 	t.end()
 })
 
@@ -172,9 +203,9 @@ pJourneyRefreshToken.catch((err) => {
 	process.exitCode = 1
 })
 
-test('refreshJourney: same arguments -> reads from cache', async (t) => {
+test(storeName + ' refreshJourney: same arguments -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.refreshJourney)
-	const h = await withMocksAndCache(hafas, {refreshJourney: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {refreshJourney: spy})
 
 	const refreshToken = await pJourneyRefreshToken
 	const opt = {stopovers: true}
@@ -185,12 +216,13 @@ test('refreshJourney: same arguments -> reads from cache', async (t) => {
 	t.equal(spy.callCount, 1)
 
 	t.deepEqual(r1, r2)
+	await teardown()
 	t.end()
 })
 
-test('refreshJourney: different arguments -> fetches new', async (t) => {
+test(storeName + ' refreshJourney: different arguments -> fetches new', async (t) => {
 	const spy = createSpy(hafas.refreshJourney)
-	const h = await withMocksAndCache(hafas, {refreshJourney: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {refreshJourney: spy})
 
 	const refreshToken = await pJourneyRefreshToken
 	const opt = {stopovers: true}
@@ -202,6 +234,7 @@ test('refreshJourney: different arguments -> fetches new', async (t) => {
 	t.equal(spy.callCount, 2)
 	await h.refreshJourney(refreshToken, {remarks: false}) // different `opt`
 	t.equal(spy.callCount, 3)
+	await teardown()
 	t.end()
 })
 
@@ -215,9 +248,9 @@ const pTrip = hafas.journeys(wollinerStr, husemannstr, {
 	return {id: leg.id, lineName: leg.line && leg.line.name}
 })
 
-test('trip: same arguments -> reads from cache', async (t) => {
+test(storeName + ' trip: same arguments -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.trip)
-	const h = await withMocksAndCache(hafas, {trip: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {trip: spy})
 
 	const {id, lineName} = await pTrip
 	const opt = {when, stopovers: true}
@@ -228,12 +261,13 @@ test('trip: same arguments -> reads from cache', async (t) => {
 	t.equal(spy.callCount, 1)
 
 	t.deepEqual(r1, r2)
+	await teardown()
 	t.end()
 })
 
-test('trip: different params -> fetches new', async (t) => {
+test(storeName + ' trip: different params -> fetches new', async (t) => {
 	const spy = createSpy(hafas.trip)
-	const h = await withMocksAndCache(hafas, {trip: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {trip: spy})
 
 	const {id, lineName} = await pTrip
 	const opt = {when, stopovers: true}
@@ -247,12 +281,13 @@ test('trip: different params -> fetches new', async (t) => {
 	t.equal(spy.callCount, 3)
 	await h.trip(id, lineName, {when, stopovers: false}) // different `opt`
 	t.equal(spy.callCount, 4)
+	await teardown()
 	t.end()
 })
 
-test('station: same arguments -> reads from cache', async (t) => {
+test(storeName + ' station: same arguments -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.station)
-	const h = await withMocksAndCache(hafas, {station: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {station: spy})
 
 	const id = '900000068201'
 	const opt = {stationLines: true}
@@ -263,12 +298,13 @@ test('station: same arguments -> reads from cache', async (t) => {
 	t.equal(spy.callCount, 1)
 
 	t.deepEqual(r1, r2)
+	await teardown()
 	t.end()
 })
 
-test('station: different arguments -> fetches new', async (t) => {
+test(storeName + ' station: different arguments -> fetches new', async (t) => {
 	const spy = createSpy(hafas.station)
-	const h = await withMocksAndCache(hafas, {station: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {station: spy})
 
 	const id = '900000068201'
 	const opt = {stationLines: true}
@@ -280,12 +316,13 @@ test('station: different arguments -> fetches new', async (t) => {
 	t.equal(spy.callCount, 2)
 	await h.station(id, {stationLines: true, language: 'en'}) // different `opt`
 	t.equal(spy.callCount, 3)
+	await teardown()
 	t.end()
 })
 
-test('nearby: same arguments -> reads from cache', async (t) => {
+test(storeName + ' nearby: same arguments -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.nearby)
-	const h = await withMocksAndCache(hafas, {nearby: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {nearby: spy})
 
 	const loc = {type: 'location', latitude: 52.5137344, longitude: 13.4744798}
 	const opt = {distance: 400, stationLines: true}
@@ -296,12 +333,13 @@ test('nearby: same arguments -> reads from cache', async (t) => {
 	t.equal(spy.callCount, 1)
 
 	t.deepEqual(r1, r2)
+	await teardown()
 	t.end()
 })
 
-test('nearby: different arguments -> fetches new', async (t) => {
+test(storeName + ' nearby: different arguments -> fetches new', async (t) => {
 	const spy = createSpy(hafas.nearby)
-	const h = await withMocksAndCache(hafas, {nearby: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {nearby: spy})
 
 	const loc = {type: 'location', latitude: 52.5137344, longitude: 13.4744798}
 	const opt = {distance: 400, stationLines: true}
@@ -313,12 +351,13 @@ test('nearby: different arguments -> fetches new', async (t) => {
 	t.equal(spy.callCount, 2)
 	await h.nearby(loc, {stationLines: true, language: 'de'}) // different `opt`
 	t.equal(spy.callCount, 3)
+	await teardown()
 	t.end()
 })
 
-test('radar: same arguments -> reads from cache', async (t) => {
+test(storeName + ' radar: same arguments -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.radar)
-	const h = await withMocksAndCache(hafas, {radar: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {radar: spy})
 
 	const bbox = {
 		north: 52.52411,
@@ -334,12 +373,13 @@ test('radar: same arguments -> reads from cache', async (t) => {
 	t.equal(spy.callCount, 1)
 
 	t.deepEqual(r1, r2)
+	await teardown()
 	t.end()
 })
 
-test('radar: different arguments -> fetches new', async (t) => {
+test(storeName + ' radar: different arguments -> fetches new', async (t) => {
 	const spy = createSpy(hafas.radar)
-	const h = await withMocksAndCache(hafas, {radar: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {radar: spy})
 
 	const bbox = {
 		north: 52.52411,
@@ -356,12 +396,13 @@ test('radar: different arguments -> fetches new', async (t) => {
 	t.equal(spy.callCount, 2)
 	await h.radar(bbox, {frames: 1, results: 100, duration: 10}) // different `opt`
 	t.equal(spy.callCount, 3)
+	await teardown()
 	t.end()
 })
 
-test('reachableFrom: same arguments -> reads from cache', async (t) => {
+test(storeName + ' reachableFrom: same arguments -> reads from cache', async (t) => {
 	const spy = createSpy(hafas.reachableFrom)
-	const h = await withMocksAndCache(hafas, {reachableFrom: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {reachableFrom: spy})
 
 	const opt = {maxTransfers: 2, maxDuration: 30, when: +when}
 	const newWhen = +when + 100
@@ -372,17 +413,18 @@ test('reachableFrom: same arguments -> reads from cache', async (t) => {
 	t.equal(spy.callCount, 1)
 
 	t.deepEqual(r1, r2)
+	await teardown()
 	t.end()
 })
 
-test('reachableFrom: different arguments -> fetches new', async (t) => {
+test(storeName + ' reachableFrom: different arguments -> fetches new', async (t) => {
 	// todo: make this test reliable, e.g. by retrying with exponential pauses
 	const reachableFromWithRetry = (station, opt) => {
 		const run = () => hafas.reachableFrom(station, opt)
 		return pRetry(run, {retries: 5, minTimeout: 2000, factor: 2})
 	}
 	const spy = createSpy(reachableFromWithRetry)
-	const h = await withMocksAndCache(hafas, {reachableFrom: spy})
+	const {hafas: h, teardown} = await withMocksAndCache(hafas, {reachableFrom: spy})
 
 	const newAddr = Object.assign({}, torfstr17, {address: torfstr17.address + 'foo'})
 	const opt = {maxTransfers: 2, maxDuration: 30, when}
@@ -395,9 +437,10 @@ test('reachableFrom: different arguments -> fetches new', async (t) => {
 	t.equal(spy.callCount, 2)
 	await h.reachableFrom(torfstr17, Object.assign({}, opt, {when: newWhen}))
 	t.equal(spy.callCount, 3)
+	await teardown()
 	t.end()
 })
 
-// todo
-// todo: removes from cache
-// todo: hit/miss events
+// // todo
+// // todo: removes from cache
+// // todo: hit/miss events
