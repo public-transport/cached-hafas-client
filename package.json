@@ -41,7 +41,7 @@
 		"hafas-client": "3.2 - 3.3"
 	},
 	"scripts": {
-		"test": "env NODE_ENV=dev node test.js | tap-min",
+		"test": "env NODE_ENV=dev node test/index.js | tap-min",
 		"prepublishOnly": "npm test"
 	}
 }

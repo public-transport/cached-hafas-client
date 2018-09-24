@@ -1,25 +1,20 @@
 'use strict'
 
-const DEBUG = process.env.NODE_DEBUG === 'cached-hafas-client'
-
-const {DateTime} = require('luxon')
-const sqlite3 = DEBUG ? require('sqlite3').verbose() : require('sqlite3')
-const {createClient: createRedis} = require('redis')
 const createHafas = require('vbb-hafas')
 const tape = require('tape')
 const tapePromise = require('tape-promise').default
 const pRetry = require('p-retry')
 
-const createSqliteStore = require('./stores/sqlite')
-const createRedisStore = require('./stores/redis')
-const createCachedHafas = require('.')
+const createSqliteStore = require('../stores/sqlite')
+const createRedisStore = require('../stores/redis')
+const createCachedHafas = require('..')
 
-const when = new Date(DateTime.fromMillis(Date.now(), {
-	zone: 'Europe/Berlin', // todo: use vbb-hafas timezone
-	locale: 'de-DE', // todo: use vbb-hafas locale
-})
-.startOf('week').plus({weeks: 1, hours: 10})
-.toISO())
+const {
+	when,
+	createSpy, delay,
+	createSqliteDb, createRedisDb
+} = require('./util')
+
 const minute = 60 * 1000
 const hour = 60 * minute
 
@@ -31,17 +26,6 @@ const torfstr17 = {
 	latitude: 52.541797,
 	longitude: 13.350042
 }
-
-const createSpy = (origFn) => {
-	const spyFn = (...args) => {
-		spyFn.callCount++
-		return origFn.apply({}, args)
-	}
-	spyFn.callCount = 0
-	return spyFn
-}
-
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms, null))
 
 const test = tapePromise(tape)
 
@@ -450,30 +434,6 @@ await teardown()
 		await teardown()
 		t.end()
 	})
-}
-
-const createSqliteDb = () => {
-	const db = new sqlite3.Database(':memory:')
-	if (DEBUG) db.on('profile', query => console.debug(query))
-	const teardown = () => {
-		db.close()
-		return Promise.resolve()
-	}
-	return Promise.resolve({db, teardown})
-}
-
-const createRedisDb = () => {
-	const db = createRedis()
-	const teardown = () => {
-		return new Promise((resolve, reject) => {
-			db.flushdb((err) => {
-				if (err) return reject(err)
-				db.quit()
-				resolve()
-			})
-		})
-	}
-	return Promise.resolve({db, teardown})
 }
 
 runTests('sqlite', createSqliteDb, createSqliteStore)

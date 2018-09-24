@@ -27,12 +27,12 @@ cachedHafas.init((err) => {
 
 	cachedHafas.departures(wollinerStr, {duration: 10, when})
 	.then(() => cachedHafas.departures(wollinerStr, {duration: 3, when: new Date(+when + 3 * 60 * 1000)}))
-	.then((deps) => console.log(deps[0]))
+	.then(deps => console.log(deps[0]))
 	.catch(onError)
 
-	cachedHafas.journeys(wollinerStr, husemannstr, {results: 2, departure: when})
-	.then(() => cachedHafas.journeys(wollinerStr, husemannstr, {results: 2, departure: when}))
-	.then((journeys) => console.log(journeys[0]))
+	cachedHafas.station(wollinerStr)
+	.then(() => cachedHafas.station(wollinerStr))
+	.then(console.log)
 	.catch(onError)
 })
 
