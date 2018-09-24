@@ -147,11 +147,14 @@ const createStore = (db) => {
 	// method:inputHash:created:id
 	// todo: this fails with `created` timestamps of different lengths (2033)
 
-	const readAtom = async (method, inputHash, createdMin, createdMax, deserialize) => {
-		debug('readAtom', {method, inputHash, createdMin, createdMax, deserialize})
-		createdMin = Math.floor(createdMin / 1000)
-		createdMax = Math.ceil(createdMax / 1000)
-		deserialize = deserialize || JSON.parse
+	const readAtom = async (args) => {
+		debug('readAtom', args)
+		const {
+			method, inputHash
+		} = args
+		const createdMin = Math.floor(args.createdMin / 1000)
+		const createdMax = Math.ceil(args.createdMax / 1000)
+		const deserialize = args.deserialize || JSON.parse
 
 		const keysPrefix = commonPrefix([
 			[VERSION, ATOMS, method, inputHash, createdMin].join(':'),
@@ -175,10 +178,14 @@ const createStore = (db) => {
 		}
 	}
 
-	const writeAtom = (method, inputHash, created, val, serialize) => {
-		debug('writeAtom', {method, inputHash, created, val, serialize})
-		created = Math.round(created / 1000)
-		serialize = serialize || JSON.stringify
+	const writeAtom = (args) => {
+		debug('writeAtom', args)
+		const {
+			method, inputHash,
+			val
+		} = args
+		const created = Math.round(args.created / 1000)
+		const serialize = args.serialize || JSON.stringify
 
 		const key = [VERSION, ATOMS, method, inputHash, created].join(':')
 		return writeWithTtl(key, serialize(val), TTL)

@@ -180,9 +180,13 @@ const createStore = (db) => {
 		// })
 	}
 
-	const readAtom = (method, inputHash, createdMin, createdMax, deserialize) => {
-		debug('readAtom', {method, inputHash, createdMin, createdMax, deserialize})
-		deserialize = deserialize || JSON.parse
+	const readAtom = (args) => {
+		debug('readAtom', args)
+		const {
+			method, inputHash,
+			createdMin, createdMax
+		} = args
+		const deserialize = args.deserialize || JSON.parse
 
 		return new Promise((resolve, reject) => {
 			db.get(READ_ATOM, {
@@ -202,9 +206,14 @@ const createStore = (db) => {
 		})
 	}
 
-	const writeAtom = (method, inputHash, created, val, serialize) => {
-		debug('writeAtom', {method, inputHash, created, val, serialize})
-		serialize = serialize || JSON.stringify
+	const writeAtom = (args) => {
+		debug('writeAtom', args)
+		const {
+			method, inputHash,
+			created,
+			val
+		} = args
+		const serialize = args.serialize || JSON.stringify
 
 		return new Promise((resolve, reject) => {
 			db.run(WRITE_ATOM, {

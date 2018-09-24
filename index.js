@@ -66,7 +66,11 @@ const createCachedHafas = (hafas, storage) => {
 		const createdMin = createdMax - CACHE_PERIOD
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 
-		const cached = await storage.readAtom(methodName, inputHash, createdMin, createdMax, deserialize)
+		const cached = await storage.readAtom({
+			method: methodName, inputHash,
+			createdMin, createdMax,
+			deserialize
+		})
 		if (cached) {
 			out.emit('hit', methodName, ...args)
 			return cached
@@ -75,7 +79,11 @@ const createCachedHafas = (hafas, storage) => {
 
 		const created = Date.now()
 		const val = await hafas[methodName](...args)
-		await storage.writeAtom(methodName, inputHash, created, val, serialize)
+		await storage.writeAtom({
+			method: methodName, inputHash,
+			created, val,
+			serialize
+		})
 		return val
 	}
 
