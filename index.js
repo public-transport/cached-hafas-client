@@ -4,7 +4,6 @@ const {createHash} = require('crypto')
 const {stringify} = require('querystring')
 const pick = require('lodash/pick')
 const omit = require('lodash/omit')
-const debug = require('debug')('cached-hafas-client')
 const {EventEmitter} = require('events')
 
 const MINUTE = 60 * 1000

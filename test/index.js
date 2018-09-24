@@ -438,5 +438,8 @@ await teardown()
 
 runTests('sqlite', createSqliteDb, createSqliteStore)
 runTests('redis', createRedisDb, createRedisStore)
+test.onFinish(() => {
+	process.exit()
+})
 
 // todo: hit/miss events
