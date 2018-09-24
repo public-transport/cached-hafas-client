@@ -60,6 +60,13 @@ cachedHafas.init((err) => { // initialize the DB
 })
 ```
 
+## Using a custom TTL
+
+```js
+const cachePeriod = 5 * 60 * 1000 // 5 minutes
+const cachedHafas = withCache(hafas, store, cachePeriod)
+```
+
 ## Counting cache hits & misses
 
 ```js

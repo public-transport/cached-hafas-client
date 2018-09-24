@@ -10,8 +10,6 @@ const COLLECTIONS = 'c'
 const COLLECTIONS_ROWS = 'r'
 const ATOMS = 'a'
 
-const TTL = 60 * 5 // todo: make customizable
-
 const createStore = (db) => {
 	const init = (cb) => {
 		debug('init')
@@ -28,12 +26,12 @@ const createStore = (db) => {
 		})
 	}
 
-	const writeWithTtl = (key, val, ttl) => {
-		debug('write', key, val.length)
+	const write = (key, val, ttl) => {
+		debug('write', key, val.length, ttl)
 		return new Promise((resolve, reject) => {
 			db.set(key, val, (err) => {
 				if (err) return reject(err)
-				db.expire(key, TTL, (err) => {
+				db.expire(key, Math.round(ttl / 1000), (err) => {
 					if (err) reject(err)
 					else resolve()
 				})
@@ -121,25 +119,25 @@ const createStore = (db) => {
 	const writeCollection = async (args) => {
 		debug('writeCollection', args)
 		const {
-			method, inputHash,
-			when, duration,
+			method, inputHash, when, duration,
+			cachePeriod,
 			rows
 		} = args
 		const created = Math.round(args.created / 1000)
 
 		const collectionId = randomBytes(10).toString('hex')
-		await writeWithTtl([
+		await write([
 			VERSION, COLLECTIONS, method, inputHash, created
 		].join(':'), JSON.stringify({
 			id: collectionId,
 			when, duration
-		}), TTL)
+		}), cachePeriod)
 
 		await Promise.all(rows.map((row, i) => {
 			const t = Math.round(new Date(row.when) / 1000)
 			if (Number.isNaN(t)) throw new Error(`rows[${i}].when must be an ISO 8601 string`)
 			const key = [VERSION, COLLECTIONS_ROWS, collectionId, t, i].join(':')
-			return writeWithTtl(key, row.data, TTL)
+			return write(key, row.data, cachePeriod)
 		}))
 	}
 
@@ -182,13 +180,14 @@ const createStore = (db) => {
 		debug('writeAtom', args)
 		const {
 			method, inputHash,
+			cachePeriod,
 			val
 		} = args
 		const created = Math.round(args.created / 1000)
 		const serialize = args.serialize || JSON.stringify
 
 		const key = [VERSION, ATOMS, method, inputHash, created].join(':')
-		return writeWithTtl(key, serialize(val), TTL)
+		return write(key, serialize(val), cachePeriod)
 	}
 
 	return {

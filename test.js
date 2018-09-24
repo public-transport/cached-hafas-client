@@ -21,6 +21,7 @@ const when = new Date(DateTime.fromMillis(Date.now(), {
 .startOf('week').plus({weeks: 1, hours: 10})
 .toISO())
 const minute = 60 * 1000
+const hour = 60 * minute
 
 const wollinerStr = '900000007105'
 const husemannstr = '900000110511'
@@ -40,16 +41,18 @@ const createSpy = (origFn) => {
 	return spyFn
 }
 
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms, null))
+
 const test = tapePromise(tape)
 
 const hafas = createHafas('cached-hafas-client test')
 
 const runTests = (storeName, createDb, createStore) => {
-	const withMocksAndCache = async (hafas, mocks) => {
+	const withMocksAndCache = async (hafas, mocks, ttl = hour) => {
 		const mocked = Object.assign(Object.create(hafas), mocks)
 		const {db, teardown} = await createDb()
 		const store = createStore(db)
-		const cachedMocked = createCachedHafas(mocked, store)
+		const cachedMocked = createCachedHafas(mocked, store, ttl)
 		await new Promise((resolve, reject) => {
 			cachedMocked.init(err => err ? reject(err) : resolve())
 		})
@@ -429,6 +432,24 @@ await teardown()
 		await teardown()
 		t.end()
 	})
+
+	test(storeName + ' should not give items older than cachePeriod', async (t) => {
+		const ttl = 1000 // 1 second
+		const spy = createSpy(hafas.station)
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {station: spy}, ttl)
+
+		await h.station('900000068201')
+		t.equal(spy.callCount, 1)
+		await h.station('900000068201')
+		t.equal(spy.callCount, 1)
+
+		await delay(2000)
+		await h.station('900000068201')
+		t.equal(spy.callCount, 2)
+
+		await teardown()
+		t.end()
+	})
 }
 
 const createSqliteDb = () => {
@@ -458,6 +479,4 @@ const createRedisDb = () => {
 runTests('sqlite', createSqliteDb, createSqliteStore)
 runTests('redis', createRedisDb, createRedisStore)
 
-// // todo
-// // todo: removes from cache
-// // todo: hit/miss events
+// todo: hit/miss events

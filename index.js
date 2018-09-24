@@ -8,7 +8,6 @@ const debug = require('debug')('cached-hafas-client')
 const {EventEmitter} = require('events')
 
 const MINUTE = 60 * 1000
-const CACHE_PERIOD = MINUTE
 
 const isObj = o => o && 'object' === typeof o && !Array.isArray(o)
 
@@ -26,7 +25,7 @@ const formatLocation = (loc) => {
 
 const STORAGE_METHODS = ['init', 'readCollection', 'writeCollection', 'readAtom', 'writeAtom']
 
-const createCachedHafas = (hafas, storage) => {
+const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 	if (!isObj(storage)) throw new Error('storage must be an object')
 	for (const method of STORAGE_METHODS) {
 		if ('function' !== typeof storage[method]) {
@@ -36,13 +35,12 @@ const createCachedHafas = (hafas, storage) => {
 
 	const collectionWithCache = async (method, cacheKeyData, whenMin, duration, args, rowToVal, valToRow) => {
 		const createdMax = Date.now()
-		const createdMin = createdMax - CACHE_PERIOD
+		const createdMin = createdMax - cachePeriod
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 
 		const values = await storage.readCollection({
-			method, inputHash,
-			whenMin, whenMax: whenMin + duration,
-			createdMin, createdMax,
+			method, inputHash, whenMin, whenMax: whenMin + duration,
+			createdMin, createdMax, cachePeriod,
 			rowToVal
 		})
 		if (values.length > 0) {
@@ -54,21 +52,21 @@ const createCachedHafas = (hafas, storage) => {
 		const created = Date.now()
 		const vals = await hafas[method](...args)
 		await storage.writeCollection({
-			method, inputHash,
-			when: whenMin, duration,
-			created, rows: vals.map(valToRow)
+			method, inputHash, when: whenMin, duration,
+			created, cachePeriod,
+			rows: vals.map(valToRow)
 		})
 		return vals
 	}
 
 	const atomWithCache = async (methodName, cacheKeyData, args, serialize = null, deserialize = null) => {
 		const createdMax = Date.now()
-		const createdMin = createdMax - CACHE_PERIOD
+		const createdMin = createdMax - cachePeriod
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 
 		const cached = await storage.readAtom({
 			method: methodName, inputHash,
-			createdMin, createdMax,
+			createdMin, createdMax, cachePeriod,
 			deserialize
 		})
 		if (cached) {
@@ -81,8 +79,8 @@ const createCachedHafas = (hafas, storage) => {
 		const val = await hafas[methodName](...args)
 		await storage.writeAtom({
 			method: methodName, inputHash,
-			created, val,
-			serialize
+			created, cachePeriod,
+			val, serialize
 		})
 		return val
 	}
