@@ -34,7 +34,7 @@
 		"sqlite3": "^4.0.2",
 		"tap-min": "^1.2.2",
 		"tape": "^4.9.1",
-		"tape-promise": "^3.0.0",
+		"tape-promise": "^4.0.0",
 		"vbb-hafas": "^5.0.1"
 	},
 	"peerDependencies": {
