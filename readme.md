@@ -11,8 +11,8 @@
 
 store name | built on top of | notes
 -----------|-----------------|------
-[`redis`](stores/redis.js) | [Redis](https://redis.io/) |
-[`sqlite`](stores/sqlite.js) | [SQLite](https://www.sqlite.org/) | TTL not implemented yet
+[`cached-hafas-client/stores/redis`](stores/redis.js) | [Redis](https://redis.io/) |
+[`cached-hafas-client/stores/sqlite`](stores/sqlite.js) | [SQLite](https://www.sqlite.org/) | TTL not implemented yet
 
 
 ## Installation
