@@ -38,7 +38,7 @@
 		"vbb-hafas": "^5.0.1"
 	},
 	"peerDependencies": {
-		"hafas-client": "3.2 - 3.5"
+		"hafas-client": "3.2 - 3.10"
 	},
 	"scripts": {
 		"test": "env NODE_ENV=dev node test/index.js | tap-spec",

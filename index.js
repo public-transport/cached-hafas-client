@@ -32,6 +32,7 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 		}
 	}
 
+	// arguments + time -> cache key
 	const collectionWithCache = async (method, cacheKeyData, whenMin, duration, args, rowToVal, valToRow) => {
 		const createdMax = Date.now()
 		const createdMin = createdMax - cachePeriod
@@ -58,6 +59,7 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 		return vals
 	}
 
+	// arguments -> cache key
 	const atomWithCache = async (methodName, cacheKeyData, args, serialize = null, deserialize = null) => {
 		const createdMax = Date.now()
 		const createdMin = createdMax - cachePeriod
