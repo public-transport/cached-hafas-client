@@ -138,6 +138,10 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 		], [id, lineName, opt])
 	}
 
+	const locations = (query, opt = {}) => {
+		return atomWithCache('locations', [query, opt], [query, opt])
+	}
+
 	const station = (id, opt = {}) => {
 		return atomWithCache('station', [id, opt], [id, opt])
 	}
@@ -169,8 +173,6 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 		], [address, opt])
 	}
 
-	// todo
-
 	const out = new EventEmitter()
 	out.init = storage.init // todo: run init here
 	out.departures = departures
@@ -178,6 +180,7 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 	out.journeys = journeys
 	if (hafas.refreshJourney) out.refreshJourney = refreshJourney
 	if (hafas.trip) out.trip = trip
+	out.locations = locations
 	out.station = station
 	out.nearby = nearby
 	if (hafas.radar) out.radar = radar

@@ -261,6 +261,41 @@ await teardown()
 		t.end()
 	})
 
+	test(storeName + ' locations: same arguments -> reads from cache', async (t) => {
+		const spy = createSpy(hafas.locations)
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {locations: spy})
+
+		const query = 'berlin'
+		const opt = {stationLines: true}
+
+		const r1 = await h.locations(query, opt)
+		t.equal(spy.callCount, 1)
+		const r2 = await h.locations(query, Object.assign({}, opt))
+		t.equal(spy.callCount, 1)
+
+		t.deepEqual(r1, r2)
+		await teardown()
+		t.end()
+	})
+
+	test(storeName + ' locations: different arguments -> fetches new', async (t) => {
+		const spy = createSpy(hafas.locations)
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {locations: spy})
+
+		const query = 'berlin'
+		const opt = {stationLines: true}
+
+		await h.locations(query, opt)
+		t.equal(spy.callCount, 1)
+
+		await h.locations('muenchen', opt) // different `query`
+		t.equal(spy.callCount, 2)
+		await h.locations(query, {stationLines: true, fuzzy: false}) // different `opt`
+		t.equal(spy.callCount, 3)
+		await teardown()
+		t.end()
+	})
+
 	test(storeName + ' station: same arguments -> reads from cache', async (t) => {
 		const spy = createSpy(hafas.station)
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {station: spy})
