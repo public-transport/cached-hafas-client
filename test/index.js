@@ -136,14 +136,19 @@ const runTests = (storeName, createDb, createStore) => {
 	test(storeName + ' journeys: same arguments -> reads from cache', async (t) => {
 		const spy = createSpy(hafas.journeys)
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {journeys: spy})
-		const opt = {departure: when, stationLines: true}
+		const opt = {departure: when, linesOfStops: true}
 
 		const r1 = await h.journeys(wollinerStr, husemannstr, opt)
 		t.equal(spy.callCount, 1)
 		const r2 = await h.journeys(wollinerStr, husemannstr, Object.assign({}, opt))
 		t.equal(spy.callCount, 1)
 
-		t.deepEqual(r1, r2)
+		t.deepEqual({
+			// JSON.stringify drops `undefined`
+			earlierRef: undefined,
+			laterRef: undefined,
+			...r2
+		}, r1)
 		await teardown()
 		t.end()
 	})
@@ -152,20 +157,20 @@ const runTests = (storeName, createDb, createStore) => {
 		const spy = createSpy(hafas.journeys)
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {journeys: spy})
 
-		await h.journeys(wollinerStr, husemannstr, {departure: when, stationLines: true})
+		await h.journeys(wollinerStr, husemannstr, {departure: when, linesOfStops: true})
 		t.equal(spy.callCount, 1)
 
 		await h.journeys(wollinerStr, husemannstr, {
 			departure: new Date(+when + 3 * minute),
-			stationLines: true
+			linesOfStops: true
 		})
 		t.equal(spy.callCount, 2)
-		await h.journeys(wollinerStr, husemannstr, {departure: when, stationLines: false})
+		await h.journeys(wollinerStr, husemannstr, {departure: when, linesOfStops: false})
 		t.equal(spy.callCount, 3)
 		await h.journeys(wollinerStr, husemannstr, {departure: when, stopovers: true})
 		t.equal(spy.callCount, 4)
 
-await teardown()
+		await teardown()
 		t.end()
 	})
 
@@ -173,7 +178,7 @@ await teardown()
 		departure: when,
 		results: 1, stopovers: false, remarks: false
 	})
-	.then(([journey]) => journey.refreshToken)
+	.then(({journeys}) => journeys[0].refreshToken)
 	pJourneyRefreshToken.catch((err) => {
 		console.error(err)
 		process.exitCode = 1
@@ -219,9 +224,9 @@ await teardown()
 		results: 1,
 		stopovers: false
 	})
-	.then(([journey]) => {
-		const leg = journey.legs.find(leg => leg.mode !== 'walking')
-		return {id: leg.id, lineName: leg.line && leg.line.name}
+	.then(({journeys}) => {
+		const leg = journeys[0].legs.find(leg => leg.mode !== 'walking')
+		return {id: leg.tripId, lineName: leg.line && leg.line.name}
 	})
 
 	test(storeName + ' trip: same arguments -> reads from cache', async (t) => {
@@ -266,7 +271,7 @@ await teardown()
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {locations: spy})
 
 		const query = 'berlin'
-		const opt = {stationLines: true}
+		const opt = {linesOfStops: true}
 
 		const r1 = await h.locations(query, opt)
 		t.equal(spy.callCount, 1)
@@ -283,29 +288,29 @@ await teardown()
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {locations: spy})
 
 		const query = 'berlin'
-		const opt = {stationLines: true}
+		const opt = {linesOfStops: true}
 
 		await h.locations(query, opt)
 		t.equal(spy.callCount, 1)
 
 		await h.locations('muenchen', opt) // different `query`
 		t.equal(spy.callCount, 2)
-		await h.locations(query, {stationLines: true, fuzzy: false}) // different `opt`
+		await h.locations(query, {linesOfStops: true, fuzzy: false}) // different `opt`
 		t.equal(spy.callCount, 3)
 		await teardown()
 		t.end()
 	})
 
-	test(storeName + ' station: same arguments -> reads from cache', async (t) => {
-		const spy = createSpy(hafas.station)
-		const {hafas: h, teardown} = await withMocksAndCache(hafas, {station: spy})
+	test(storeName + ' stop: same arguments -> reads from cache', async (t) => {
+		const spy = createSpy(hafas.stop)
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {stop: spy})
 
 		const id = '900000068201'
-		const opt = {stationLines: true}
+		const opt = {linesOfStops: true}
 
-		const r1 = await h.station(id, opt)
+		const r1 = await h.stop(id, opt)
 		t.equal(spy.callCount, 1)
-		const r2 = await h.station(id, Object.assign({}, opt))
+		const r2 = await h.stop(id, Object.assign({}, opt))
 		t.equal(spy.callCount, 1)
 
 		t.deepEqual(r1, r2)
@@ -313,19 +318,19 @@ await teardown()
 		t.end()
 	})
 
-	test(storeName + ' station: different arguments -> fetches new', async (t) => {
-		const spy = createSpy(hafas.station)
-		const {hafas: h, teardown} = await withMocksAndCache(hafas, {station: spy})
+	test(storeName + ' stop: different arguments -> fetches new', async (t) => {
+		const spy = createSpy(hafas.stop)
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {stop: spy})
 
 		const id = '900000068201'
-		const opt = {stationLines: true}
+		const opt = {linesOfStops: true}
 
-		await h.station(id, opt)
+		await h.stop(id, opt)
 		t.equal(spy.callCount, 1)
 
-		await h.station('900000017101', opt) // different `id`
+		await h.stop('900000017101', opt) // different `id`
 		t.equal(spy.callCount, 2)
-		await h.station(id, {stationLines: true, language: 'en'}) // different `opt`
+		await h.stop(id, {linesOfStops: true, language: 'en'}) // different `opt`
 		t.equal(spy.callCount, 3)
 		await teardown()
 		t.end()
@@ -336,7 +341,7 @@ await teardown()
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {nearby: spy})
 
 		const loc = {type: 'location', latitude: 52.5137344, longitude: 13.4744798}
-		const opt = {distance: 400, stationLines: true}
+		const opt = {distance: 400, linesOfStops: true}
 
 		const r1 = await h.nearby(loc, opt)
 		t.equal(spy.callCount, 1)
@@ -353,14 +358,14 @@ await teardown()
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {nearby: spy})
 
 		const loc = {type: 'location', latitude: 52.5137344, longitude: 13.4744798}
-		const opt = {distance: 400, stationLines: true}
+		const opt = {distance: 400, linesOfStops: true}
 
 		await h.nearby(loc, opt)
 		t.equal(spy.callCount, 1)
 
 		await h.nearby({type: 'location', latitude: 52.51, longitude: 13.47}, opt) // different `location`
 		t.equal(spy.callCount, 2)
-		await h.nearby(loc, {stationLines: true, language: 'de'}) // different `opt`
+		await h.nearby(loc, {linesOfStops: true, language: 'de'}) // different `opt`
 		t.equal(spy.callCount, 3)
 		await teardown()
 		t.end()
@@ -430,8 +435,8 @@ await teardown()
 
 	test(storeName + ' reachableFrom: different arguments -> fetches new', async (t) => {
 		// todo: make this test reliable, e.g. by retrying with exponential pauses
-		const reachableFromWithRetry = (station, opt) => {
-			const run = () => hafas.reachableFrom(station, opt)
+		const reachableFromWithRetry = (stop, opt) => {
+			const run = () => hafas.reachableFrom(stop, opt)
 			return pRetry(run, {retries: 5, minTimeout: 2000, factor: 2})
 		}
 		const spy = createSpy(reachableFromWithRetry)
@@ -454,16 +459,16 @@ await teardown()
 
 	test(storeName + ' should not give items older than cachePeriod', async (t) => {
 		const ttl = 1000 // 1 second
-		const spy = createSpy(hafas.station)
-		const {hafas: h, teardown} = await withMocksAndCache(hafas, {station: spy}, ttl)
+		const spy = createSpy(hafas.stop)
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {stop: spy}, ttl)
 
-		await h.station('900000068201')
+		await h.stop('900000068201')
 		t.equal(spy.callCount, 1)
-		await h.station('900000068201')
+		await h.stop('900000068201')
 		t.equal(spy.callCount, 1)
 
 		await delay(2000)
-		await h.station('900000068201')
+		await h.stop('900000068201')
 		t.equal(spy.callCount, 2)
 
 		await teardown()

@@ -24,7 +24,7 @@ npm install cached-hafas-client
 
 ## Usage
 
-Because `cached-hafas-client` caches HAFAS responses by "request signature", it is build on the assumption that HAFAS works deterministically. This is why you must send deterministic queries; for example, you must pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/eddacd0091785155cdf734f1761d62dd9ab7ef06/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/eddacd0091785155cdf734f1761d62dd9ab7ef06/docs/arrivals.md).
+Because `cached-hafas-client` caches HAFAS responses by "request signature", it is build on the assumption that HAFAS works deterministically. This is why you must send deterministic queries; for example, you must pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/5/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/5/docs/arrivals.md).
 
 ```js
 // create HAFAS client
@@ -59,6 +59,8 @@ cachedHafas.init((err) => { // initialize the DB
 	.catch(console.error)
 })
 ```
+
+*Note:* `cached-hafas-client` is only compatible with [`hafas-client@5`](https://github.com/public-transport/hafas-client/tree/5).
 
 ## Using a custom TTL
 

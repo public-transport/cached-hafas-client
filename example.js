@@ -30,8 +30,8 @@ cachedHafas.init((err) => {
 	.then(deps => console.log(deps[0]))
 	.catch(onError)
 
-	cachedHafas.station(wollinerStr)
-	.then(() => cachedHafas.station(wollinerStr))
+	cachedHafas.stop(wollinerStr)
+	.then(() => cachedHafas.stop(wollinerStr))
 	.then(console.log)
 	.catch(onError)
 })

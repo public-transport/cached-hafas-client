@@ -1,10 +1,13 @@
 'use strict'
 
+const {ok} = require('assert')
 const {randomBytes} = require('crypto')
 const debug = require('debug')('cached-hafas-client:redis')
 const commonPrefix = require('common-prefix')
+const pkg = require('../package.json')
 
-const VERSION = '1'
+const VERSION = pkg['cached-hafas-client'].dataVersion + ''
+ok(VERSION)
 
 const COLLECTIONS = 'c'
 const COLLECTIONS_ROWS = 'r'

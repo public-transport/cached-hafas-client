@@ -35,10 +35,13 @@
 		"tap-spec": "^5.0.0",
 		"tape": "^4.9.1",
 		"tape-promise": "^4.0.0",
-		"vbb-hafas": "^5.0.1"
+		"vbb-hafas": "^7.0.1"
+	},
+	"cached-hafas-client": {
+		"dataVersion": 2
 	},
 	"peerDependencies": {
-		"hafas-client": "3.2 - 3.10"
+		"hafas-client": "5.0 - 5.2"
 	},
 	"scripts": {
 		"test": "env NODE_ENV=dev node test/index.js | tap-spec",

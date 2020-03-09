@@ -1,9 +1,12 @@
 'use strict'
 
+const {ok} = require('assert')
 const {randomBytes} = require('crypto')
 const debug = require('debug')('cached-hafas-client:sqlite')
+const pkg = require('../package.json')
 
-const V = '1'
+const V = pkg['cached-hafas-client'].dataVersion + ''
+ok(V)
 
 const CREATE_COLLECTION_QUERIES_TABLE = `\
 CREATE TABLE IF NOT EXISTS collection_queries_${V} (

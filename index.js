@@ -60,7 +60,7 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 	}
 
 	// arguments -> cache key
-	const atomWithCache = async (methodName, cacheKeyData, args, serialize = null, deserialize = null) => {
+	const atomWithCache = async (methodName, cacheKeyData, args) => {
 		const createdMax = Date.now()
 		const createdMin = createdMax - cachePeriod
 		const inputHash = hash(JSON.stringify(cacheKeyData))
@@ -68,7 +68,6 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 		const cached = await storage.readAtom({
 			method: methodName, inputHash,
 			createdMin, createdMax, cachePeriod,
-			deserialize
 		})
 		if (cached) {
 			out.emit('hit', methodName, ...args)
@@ -81,7 +80,7 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 		await storage.writeAtom({
 			method: methodName, inputHash,
 			created, cachePeriod,
-			val, serialize
+			val,
 		})
 		return val
 	}
@@ -110,22 +109,11 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 	const arrivals = depsOrArrs('arrivals')
 
 	const journeys = (from, to, opt = {}) => {
-		// JSON does not support arrays with properties
-		const serialize = (journeys) => {
-			return JSON.stringify([journeys.earlierRef, journeys.laterRef, journeys])
-		}
-		const deserialize = (raw) => {
-			const [earlierRef, laterRef, journeys] = JSON.parse(raw)
-			journeys.earlierRef = earlierRef
-			journeys.laterRef = laterRef
-			return journeys
-		}
-
 		return atomWithCache('journeys', [
 			formatLocation(from),
 			formatLocation(to),
 			opt
-		], [from, to, opt], serialize, deserialize)
+		], [from, to, opt])
 	}
 
 	const refreshJourney = (refreshToken, opt = {}) => {
@@ -144,8 +132,8 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 		return atomWithCache('locations', [query, opt], [query, opt])
 	}
 
-	const station = (id, opt = {}) => {
-		return atomWithCache('station', [id, opt], [id, opt])
+	const stop = (id, opt = {}) => {
+		return atomWithCache('stop', [id, opt], [id, opt])
 	}
 
 	// todo: cache individual locations, use a spatial index for querying
@@ -183,7 +171,7 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 	if (hafas.refreshJourney) out.refreshJourney = refreshJourney
 	if (hafas.trip) out.trip = trip
 	out.locations = locations
-	out.station = station
+	out.stop = stop
 	out.nearby = nearby
 	if (hafas.radar) out.radar = radar
 	if (hafas.reachableFrom) out.reachableFrom = reachableFrom
