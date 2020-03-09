@@ -5,14 +5,17 @@ const {createClient: createRedis} = require('redis')
 const withCache = require('.')
 const createRedisStore = require('./stores/redis')
 
+// using Redis
+const db = createRedis()
+const store = createRedisStore(db)
+
+// using SQLite
 // const sqlite3 = require('sqlite3')
 // const createSqliteStore = require('./stores/sqlite')
 // const db = new sqlite3.Database(':memory:')
 // const store = createSqliteStore(db)
 
 const hafas = createHafas('cached-hafas-client example')
-const db = createRedis()
-const store = createRedisStore(db)
 const cachedHafas = withCache(hafas, store)
 
 cachedHafas.on('hit', (method, ...args) => console.info('cache hit!', method, ...args))

@@ -1,6 +1,5 @@
 'use strict'
 
-const createHafas = require('vbb-hafas')
 const tape = require('tape')
 const tapePromise = require('tape-promise').default
 const pRetry = require('p-retry')
@@ -10,6 +9,7 @@ const createRedisStore = require('../stores/redis')
 const createCachedHafas = require('..')
 
 const {
+	hafas,
 	when,
 	createSpy, delay,
 	createSqliteDb, createRedisDb
@@ -28,8 +28,6 @@ const torfstr17 = {
 }
 
 const test = tapePromise(tape)
-
-const hafas = createHafas('cached-hafas-client test')
 
 const runTests = (storeName, createDb, createStore) => {
 	const withMocksAndCache = async (hafas, mocks, ttl = hour) => {
@@ -181,7 +179,7 @@ const runTests = (storeName, createDb, createStore) => {
 	.then(({journeys}) => journeys[0].refreshToken)
 	pJourneyRefreshToken.catch((err) => {
 		console.error(err)
-		process.exitCode = 1
+		process.exit(1)
 	})
 
 	test(storeName + ' refreshJourney: same arguments -> reads from cache', async (t) => {

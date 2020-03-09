@@ -2,13 +2,16 @@
 
 const DEBUG = process.env.NODE_DEBUG === 'cached-hafas-client'
 
+const createHafas = require('vbb-hafas')
 const {DateTime} = require('luxon')
 const sqlite3 = DEBUG ? require('sqlite3').verbose() : require('sqlite3')
 const {createClient: createRedis} = require('redis')
 
+const hafas = createHafas('cached-hafas-client test')
+
+const {timezone, locale} = hafas.profile
 const when = new Date(DateTime.fromMillis(Date.now(), {
-	zone: 'Europe/Berlin', // todo: use vbb-hafas timezone
-	locale: 'de-DE', // todo: use vbb-hafas locale
+	zone: timezone, locale,
 })
 .startOf('week').plus({weeks: 1, hours: 10})
 .toISO())
@@ -49,6 +52,7 @@ const createRedisDb = () => {
 }
 
 module.exports = {
+	hafas,
 	when,
 	createSpy,
 	delay,

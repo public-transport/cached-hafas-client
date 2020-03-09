@@ -7,7 +7,7 @@
 ![ISC-licensed](https://img.shields.io/github/license/derhuerst/cached-hafas-client.svg)
 [![chat with me on Gitter](https://img.shields.io/badge/chat%20with%20me-on%20gitter-512e92.svg)](https://gitter.im/derhuerst)
 
-`cached-hafas-client` is split into two parts: the core logic and stores; You can pick the store implementation that fits your use case best. Right now the following stores are implemented:
+`cached-hafas-client`'s core logic is separated from data storage code; You can pick the store implementation that fits your use case best. Right now the following stores are implemented:
 
 store name | built on top of | notes
 -----------|-----------------|------
@@ -24,7 +24,9 @@ npm install cached-hafas-client
 
 ## Usage
 
-Because `cached-hafas-client` caches HAFAS responses by "request signature", it is build on the assumption that HAFAS works deterministically. This is why you must send deterministic queries; for example, you must pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/5/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/5/docs/arrivals.md).
+Because `cached-hafas-client` caches HAFAS responses by "request signature", it is build on the assumption that, aside from the ever-changing transit data underneath, HAFAS works deterministically.
+
+This is why **you must send deterministic queries**; for example, you *must* pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/5/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/5/docs/arrivals.md) for it to know which "time range" the data returned by HAFAS is for.
 
 ```js
 // create HAFAS client
@@ -47,10 +49,11 @@ cachedHafas.init((err) => { // initialize the DB
 	const husemannstr = '900000110511'
 	const when = new Date(Date.now() + 60 * 60 * 1000)
 
-	// will fetch from HAFAS
+	// will fetch fresh data from HAFAS
 	cachedHafas.departures(wollinerStr, {duration: 10, when})
 	.then(() => {
-		// within the time frame of a recent departures() call -> will read from cache
+		// within the "time range" of a recent departures() call,
+		// so it will use the cached data
 		return cachedHafas.departures(wollinerStr, {
 			duration: 3, when: new Date(+when + 3 * 60 * 1000)
 		})
@@ -83,4 +86,4 @@ cachedHafas.on('miss', (hafasClientMethod, ...args) => {
 
 ## Contributing
 
-If you have a question or need support using `cached-hafas-client, please double-check your code and setup first. If you think you have found a bug or want to propose a feature, refer to [the issues page](https://github.com/derhuerst/cached-hafas-client/issues).
+If you have a question or need support using `cached-hafas-client`, please double-check your code and setup first. If you think you have found a bug or want to propose a feature, use [the issues page](https://github.com/derhuerst/cached-hafas-client/issues).
