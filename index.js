@@ -24,7 +24,7 @@ const formatLocation = (loc) => {
 
 const STORAGE_METHODS = ['init', 'readCollection', 'writeCollection', 'readAtom', 'writeAtom']
 
-const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
+const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 	if (!isObj(storage)) throw new Error('storage must be an object')
 	for (const method of STORAGE_METHODS) {
 		if ('function' !== typeof storage[method]) {
@@ -162,8 +162,10 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 		], [address, opt])
 	}
 
+	// initialize storage
+	await storage.init()
+
 	const out = new EventEmitter()
-	out.init = storage.init // todo: run init here
 	out.departures = departures
 	out.arrivals = arrivals
 	out.journeys = journeys

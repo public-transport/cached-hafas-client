@@ -34,10 +34,7 @@ const runTests = (storeName, createDb, createStore) => {
 		const mocked = Object.assign(Object.create(hafas), mocks)
 		const {db, teardown} = await createDb()
 		const store = createStore(db)
-		const cachedMocked = createCachedHafas(mocked, store, ttl)
-		await new Promise((resolve, reject) => {
-			cachedMocked.init(err => err ? reject(err) : resolve())
-		})
+		const cachedMocked = await createCachedHafas(mocked, store, ttl)
 		return {hafas: cachedMocked, teardown}
 	}
 

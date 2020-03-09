@@ -15,31 +15,32 @@ const store = createRedisStore(db)
 // const db = new sqlite3.Database(':memory:')
 // const store = createSqliteStore(db)
 
-const hafas = createHafas('cached-hafas-client example')
-const cachedHafas = withCache(hafas, store)
+const wollinerStr = '900000007105'
+const husemannstr = '900000110511'
+const when = new Date(Date.now() + 60 * 60 * 1000)
 
-cachedHafas.on('hit', (method, ...args) => console.info('cache hit!', method, ...args))
-cachedHafas.on('miss', (method, ...args) => console.info('cache miss!', method, ...args))
+;(async () => {
 
-cachedHafas.init((err) => {
-	if (err) return onError(err)
+	const hafas = createHafas('cached-hafas-client example')
+	const cachedHafas = await withCache(hafas, store)
 
-	const wollinerStr = '900000007105'
-	const husemannstr = '900000110511'
-	const when = new Date(Date.now() + 60 * 60 * 1000)
+	cachedHafas.on('hit', (method, ...args) => console.info('cache hit!', method, ...args))
+	cachedHafas.on('miss', (method, ...args) => console.info('cache miss!', method, ...args))
 
-	cachedHafas.departures(wollinerStr, {duration: 10, when})
-	.then(() => cachedHafas.departures(wollinerStr, {duration: 3, when: new Date(+when + 3 * 60 * 1000)}))
-	.then(deps => console.log(deps[0]))
-	.catch(onError)
+	await cachedHafas.departures(wollinerStr, {
+		duration: 10, when
+	})
+	const deps = await cachedHafas.departures(wollinerStr, {
+		duration: 3, when: new Date(+when + 3 * 60 * 1000)
+	})
+	console.log(deps[0])
 
-	cachedHafas.stop(wollinerStr)
-	.then(() => cachedHafas.stop(wollinerStr))
-	.then(console.log)
-	.catch(onError)
-})
+	await cachedHafas.stop(wollinerStr)
+	const stop = await cachedHafas.stop(wollinerStr)
+	console.log(stop)
 
-const onError = (err) => {
+})()
+.catch((err) => {
 	console.error(err)
 	process.exit(1)
-}
+})
