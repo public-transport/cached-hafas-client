@@ -1,6 +1,7 @@
 'use strict'
 
 const {ok} = require('assert')
+const {promisify} = require('util')
 const {randomBytes} = require('crypto')
 const debug = require('debug')('cached-hafas-client:sqlite')
 const pkg = require('../package.json')
@@ -26,7 +27,8 @@ CREATE INDEX IF NOT EXISTS collection_queries_${V}_when_idx
 CREATE INDEX IF NOT EXISTS collection_queries_${V}_duration_idx
 	ON collection_queries_${V} (duration);
 CREATE INDEX IF NOT EXISTS collection_queries_${V}_inputHash_idx
-	ON collection_queries_${V} (inputHash);`
+	ON collection_queries_${V} (inputHash);
+`
 
 const CREATE_COLLECTIONS_TABLE = `\
 PRAGMA foreign_keys = ON;
@@ -39,7 +41,8 @@ CREATE TABLE IF NOT EXISTS collections_${V} (
 	FOREIGN KEY (query_id) REFERENCES collection_queries_${V}(collection_queries_id)
 );
 CREATE INDEX IF NOT EXISTS collections_${V}_query_id_idx
-	ON collections_${V} (query_id);`
+	ON collections_${V} (query_id);
+`
 
 const READ_COLLECTIONS = `\
 SELECT collections_${V}.data FROM collection_queries_${V}
@@ -58,17 +61,20 @@ WHERE
 	-- only get items in the when -> (when + duration) period
 	AND collections_${V}."when" >= $whenMin
 	AND collections_${V}."when" <= $whenMax
-ORDER BY collections_${V}.i ASC`
+ORDER BY collections_${V}.i ASC;
+`
 
 const WRITE_COLLECTION_QUERY = `\
 INSERT OR REPLACE INTO collection_queries_${V}
 (collection_queries_id, method, created, "when", duration, inputHash)
-VALUES ($id, $method, $created, $when, $duration, $inputHash)`
+VALUES ($id, $method, $created, $when, $duration, $inputHash);
+`
 
 const WRITE_COLLECTIONS = `\
 INSERT INTO collections_${V}
 (collections_id, query_id, i, "when", data)
-VALUES ($id, $queryId, $i, $when, $data)`
+VALUES ($id, $queryId, $i, $when, $data);
+`
 
 // "atom queries": Queries whose return values can only be cached together.
 // Example: Caching 1 of 3 journeys and reusing for other queries is impossible.
@@ -86,7 +92,8 @@ CREATE INDEX IF NOT EXISTS atoms_${V}_created_idx
 CREATE INDEX IF NOT EXISTS atoms_${V}_inputHash_idx
 	ON atoms_${V} (inputHash);
 CREATE INDEX IF NOT EXISTS atoms_${V}_data_idx
-	ON atoms_${V} (data);`
+	ON atoms_${V} (data);
+`
 
 const READ_ATOM = `\
 SELECT data FROM atoms_${V}
@@ -97,24 +104,31 @@ WHERE
 	-- find queries created within the cache period
 	AND created >= $createdMin
 	AND created <= $createdMax
-LIMIT 1`
+LIMIT 1;
+`
 
 const WRITE_ATOM = `\
 INSERT OR REPLACE INTO atoms_${V}
 (atoms_id, created, method, inputHash, data)
-VALUES ($id, $created, $method, $inputHash, $data)`
+VALUES ($id, $created, $method, $inputHash, $data);
+`
 
 const createStore = (db) => {
-	const init = (cb) => {
+	const dbExec = promisify(db.exec.bind(db))
+	const dbAll = promisify(db.all.bind(db))
+	const dbRun = promisify(db.run.bind(db))
+	const dbGet = promisify(db.get.bind(db))
+
+	const init = async (cb) => {
 		debug('init')
-		db.exec([
+		await dbExec([
 			CREATE_COLLECTION_QUERIES_TABLE,
 			CREATE_COLLECTIONS_TABLE,
 			CREATE_ATOMS_TABLE
-		].join('\n'), cb)
+		].join('\n'))
 	}
 
-	const readCollection = (args) => {
+	const readCollection = async (args) => {
 		debug('readCollection', args)
 		const {
 			method, inputHash,
@@ -123,24 +137,16 @@ const createStore = (db) => {
 		} = args
 		const rowToVal = args.rowToVal || (row => JSON.parse(row.data))
 
-		return new Promise((resolve, reject) => {
-			db.all(READ_COLLECTIONS, {
-				'$method': method, // 'dep' or 'arr'
-				'$inputHash': inputHash,
-				'$createdMin': Math.floor(createdMin / 1000),
-				'$createdMax': Math.ceil(createdMax / 1000),
-				'$whenMin': whenMin / 1000 | 0,
-				'$whenMax': whenMax / 1000 | 0
-			}, (err, rows) => {
-				if (err) return reject(err)
-				try {
-					// todo: expose `.created`
-					resolve(rows.map(rowToVal))
-				} catch (err) {
-					reject(err)
-				}
-			})
+		const rows = await dbAll(READ_COLLECTIONS, {
+			'$method': method, // 'dep' or 'arr'
+			'$inputHash': inputHash,
+			'$createdMin': Math.floor(createdMin / 1000),
+			'$createdMax': Math.ceil(createdMax / 1000),
+			'$whenMin': whenMin / 1000 | 0,
+			'$whenMax': whenMax / 1000 | 0
 		})
+		// todo: expose `.created`
+		return rows.map(rowToVal)
 	}
 
 	const writeCollection = async (args) => {
@@ -152,15 +158,13 @@ const createStore = (db) => {
 		} = args
 		const queryId = randomBytes(10).toString('hex')
 
-		await new Promise((resolve, reject) => {
-			db.run(WRITE_COLLECTION_QUERY, {
-				'$id': queryId,
-				'$method': method, // 'dep' or 'arr'
-				'$created': created / 1000 | 0,
-				'$when': when / 1000 | 0,
-				'$duration': duration / 1000 | 0,
-				'$inputHash': inputHash
-			}, err => err ? reject(err) : resolve())
+		await dbRun(WRITE_COLLECTION_QUERY, {
+			'$id': queryId,
+			'$method': method, // 'dep' or 'arr'
+			'$created': created / 1000 | 0,
+			'$when': when / 1000 | 0,
+			'$duration': duration / 1000 | 0,
+			'$inputHash': inputHash
 		})
 
 		// todo: use `cmd = db.prepare; cmd.bind` for performance!
@@ -168,22 +172,18 @@ const createStore = (db) => {
 		for (let i = 0; i < rows.length; i++) {
 			const row = rows[i]
 
-			await new Promise((resolve, reject) => {
-				db.run(WRITE_COLLECTIONS, {
-					'$id': randomBytes(10).toString('hex'),
-					'$queryId': queryId,
-					'$i': i,
-					'$when': new Date(row.when) / 1000 | 0, // todo
-					'$data': row.data
-				}, err => err ? reject(err) : resolve())
+			await dbRun(WRITE_COLLECTIONS, {
+				'$id': randomBytes(10).toString('hex'),
+				'$queryId': queryId,
+				'$i': i,
+				'$when': new Date(row.when) / 1000 | 0, // todo
+				'$data': row.data
 			})
 		}
-		// await new Promise((resolve, reject) => {
-		// 	cmd.finalize(err => err ? reject(err) : resolve())
-		// })
+		// await new cmd.finalize()
 	}
 
-	const readAtom = (args) => {
+	const readAtom = async (args) => {
 		debug('readAtom', args)
 		const {
 			method, inputHash,
@@ -191,25 +191,18 @@ const createStore = (db) => {
 		} = args
 		const deserialize = args.deserialize || JSON.parse
 
-		return new Promise((resolve, reject) => {
-			db.get(READ_ATOM, {
-				'$method': method,
-				'$inputHash': inputHash,
-				'$createdMin': Math.floor(createdMin / 1000),
-				'$createdMax': Math.ceil(createdMax / 1000)
-			}, (err, row) => {
-				if (err) return reject(err)
-				if (!row || !row.data) return resolve(null)
-				try {
-					resolve(deserialize(row.data))
-				} catch (err) {
-					reject(err)
-				}
-			})
+		const row = await dbGet(READ_ATOM, {
+			'$method': method,
+			'$inputHash': inputHash,
+			'$createdMin': Math.floor(createdMin / 1000),
+			'$createdMax': Math.ceil(createdMax / 1000)
 		})
+
+		if (!row || !row.data) return null
+		return deserialize(row.data)
 	}
 
-	const writeAtom = (args) => {
+	const writeAtom = async (args) => {
 		debug('writeAtom', args)
 		const {
 			method, inputHash,
@@ -218,17 +211,12 @@ const createStore = (db) => {
 		} = args
 		const serialize = args.serialize || JSON.stringify
 
-		return new Promise((resolve, reject) => {
-			db.run(WRITE_ATOM, {
-				'$id': randomBytes(10).toString('hex'),
-				'$created': created / 1000 | 0,
-				'$method': method,
-				'$inputHash': inputHash,
-				'$data': serialize(val)
-			}, (err) => {
-				if (err) reject(err)
-				else resolve()
-			})
+		await dbRun(WRITE_ATOM, {
+			'$id': randomBytes(10).toString('hex'),
+			'$created': created / 1000 | 0,
+			'$method': method,
+			'$inputHash': inputHash,
+			'$data': serialize(val)
 		})
 	}
 
