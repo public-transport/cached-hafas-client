@@ -25,10 +25,12 @@ const formatLocation = (loc) => {
 const STORAGE_METHODS = ['init', 'readCollection', 'writeCollection', 'readAtom', 'writeAtom']
 
 const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
-	if (!isObj(storage)) throw new Error('storage must be an object')
+	if (!isObj(storage)) {
+		throw new TypeError('storage must be an object')
+	}
 	for (const method of STORAGE_METHODS) {
 		if ('function' !== typeof storage[method]) {
-			throw new Error(`invalid storage: storage.${method} is not a function`)
+			throw new TypeError(`invalid storage: storage.${method} must be a function`)
 		}
 	}
 
