@@ -1,6 +1,7 @@
 'use strict'
 
 const {ok} = require('assert')
+const {promisify} = require('util')
 const {randomBytes} = require('crypto')
 const debug = require('debug')('cached-hafas-client:redis')
 const commonPrefix = require('common-prefix')
@@ -14,50 +15,43 @@ const COLLECTIONS_ROWS = 'r'
 const ATOMS = 'a'
 
 const createStore = (db) => {
-	const init = (cb) => {
+	const dbGet = promisify(db.get.bind(db))
+	const dbSet = promisify(db.set.bind(db))
+	const dbExpire = promisify(db.expire.bind(db))
+	const dbScan = promisify(db.scan.bind(db))
+
+	const init = async () => {
 		debug('init')
-		setImmediate(cb, null)
 	}
 
-	const read = (key) => {
+	const read = async (key) => {
 		debug('read', key)
-		return new Promise((resolve, reject) => {
-			db.get(key, (err, val) => {
-				if (err) reject(err)
-				else resolve(val)
-			})
-		})
+		return await dbGet(key)
 	}
 
-	const write = (key, val, ttl) => {
+	const write = async (key, val, ttl) => {
 		debug('write', key, val.length, ttl)
-		return new Promise((resolve, reject) => {
-			db.set(key, val, (err) => {
-				if (err) return reject(err)
-				db.expire(key, Math.round(ttl / 1000), (err) => {
-					if (err) reject(err)
-					else resolve()
-				})
-			})
-		})
+		await dbSet(key, val)
+		await dbExpire(key, Math.round(ttl / 1000))
 	}
 
-	// todo [breaking]: use async iteration using `Symbol.asyncIterator`
-	const scan = (pattern) => {
-		debug('scan', pattern)
-		let cursor = '0'
-		const iterate = () => {
-			return new Promise((resolve, reject) => {
-				db.scan(cursor, 'MATCH', pattern, 'COUNT', '30', (err, res) => {
-					if (err) return reject(err)
-					cursor = res[0]
-					resolve({done: cursor === '0', value: res[1]})
-				})
-			})
+	const scanner = (pattern) => {
+		debug('scanner', pattern)
+		let cursor = '0', initial = true
+		const iterate = async () => {
+			if (!initial && cursor === '0') return {done: true, value: null}
+			initial = false
+
+			const res = await dbScan(cursor, 'MATCH', pattern, 'COUNT', '30')
+			cursor = res[0]
+			return {done: false, value: res[1]}
 		}
 
 		return {next: iterate}
 	}
+	const scan = pattern => ({
+		[Symbol.asyncIterator]: () => scanner(pattern)
+	})
 
 	const findMatchingCollection = async (args) => {
 		const {
@@ -68,13 +62,11 @@ const createStore = (db) => {
 		const createdMax = Math.ceil(args.createdMax / 1000)
 
 		// todo: scan in reverse order to, when in doubt, get the latest collection
-		const scanner = scan(commonPrefix([
+		const prefix = commonPrefix([
 			[VERSION, COLLECTIONS, method, inputHash, createdMin].join(':'),
 			[VERSION, COLLECTIONS, method, inputHash, createdMax].join(':')
-		]) + '*')
-		while (true) {
-			const {done, value: keys} = await scanner.next()
-
+		])
+		for await (const keys of scan(prefix + '*')) {
 			for (let key of keys) {
 				const created = parseInt(key.split(':')[4])
 				if (Number.isNaN(created) || created < createdMin || created > createdMax) continue
@@ -82,9 +74,8 @@ const createStore = (db) => {
 				const {when, duration, id} = JSON.parse(await read(key))
 				if (when <= whenMin && (when + duration) >= whenMax) return id
 			}
-
-			if (done) return null
 		}
+		return null
 	}
 
 	const readCollection = async (args) => {
@@ -97,11 +88,8 @@ const createStore = (db) => {
 		if (!id) return []
 
 		const prefix = [VERSION, COLLECTIONS_ROWS, id].join(':') + ':'
-		const scanner = scan(prefix + '*')
 		const rows = []
-		while (true) {
-			const {done, value: keys} = await scanner.next()
-
+		for await (const keys of scan(prefix + '*')) {
 			for (let key of keys) {
 				const keyParts = key.split(':')
 
@@ -115,8 +103,10 @@ const createStore = (db) => {
 				])
 			}
 
-			if (done) return rows.sort((a, b) => a[0] - b[0]).map(row => row[1])
 		}
+		return rows
+		.sort(([idxA], [idxB]) => idxA - idxB)
+		.map(([idx, val]) => val)
 	}
 
 	const writeCollection = async (args) => {
@@ -136,11 +126,11 @@ const createStore = (db) => {
 			when, duration
 		}), cachePeriod)
 
-		await Promise.all(rows.map((row, i) => {
+		await Promise.all(rows.map(async (row, i) => {
 			const t = Math.round(new Date(row.when) / 1000)
 			if (Number.isNaN(t)) throw new Error(`rows[${i}].when must be an ISO 8601 string`)
 			const key = [VERSION, COLLECTIONS_ROWS, collectionId, t, i].join(':')
-			return write(key, row.data, cachePeriod)
+			await write(key, row.data, cachePeriod)
 		}))
 	}
 
@@ -163,10 +153,7 @@ const createStore = (db) => {
 		])
 
 		// todo: scan in reverse order to, when in doubt, get the latest item
-		const scanner = scan(keysPrefix + '*')
-		while (true) {
-			const {done, value: keys} = await scanner.next()
-
+		for await (const keys of scan(keysPrefix + '*')) {
 			for (let key of keys) {
 				const created = parseInt(key.split(':')[4])
 				if (Number.isNaN(created) || created < createdMin || created > createdMax) continue
@@ -175,11 +162,11 @@ const createStore = (db) => {
 				return deserialize(val)
 			}
 
-			if (done) return null
 		}
+		return null
 	}
 
-	const writeAtom = (args) => {
+	const writeAtom = async (args) => {
 		debug('writeAtom', args)
 		const {
 			method, inputHash,
@@ -190,7 +177,7 @@ const createStore = (db) => {
 		const serialize = args.serialize || JSON.stringify
 
 		const key = [VERSION, ATOMS, method, inputHash, created].join(':')
-		return write(key, serialize(val), cachePeriod)
+		await write(key, serialize(val), cachePeriod)
 	}
 
 	return {
