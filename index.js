@@ -8,6 +8,8 @@ const {EventEmitter} = require('events')
 
 const MINUTE = 60 * 1000
 
+const CACHED = Symbol('cache control')
+
 const isObj = o => o && 'object' === typeof o && !Array.isArray(o)
 
 const hash = (str) => {
@@ -35,19 +37,22 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 	}
 
 	// arguments + time -> cache key
-	const collectionWithCache = async (method, cacheKeyData, whenMin, duration, args, rowToVal, valToRow) => {
-		const createdMax = Date.now()
-		const createdMin = createdMax - cachePeriod
+	const collectionWithCache = async (method, useCache, cacheKeyData, whenMin, duration, args, rowToVal, valToRow) => {
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 
-		const values = await storage.readCollection({
-			method, inputHash, whenMin, whenMax: whenMin + duration,
-			createdMin, createdMax, cachePeriod,
-			rowToVal
-		})
-		if (values.length > 0) {
-			out.emit('hit', method, ...args, values.length)
-			return values
+		if (useCache) {
+			const createdMax = Date.now()
+			const createdMin = createdMax - cachePeriod
+			const values = await storage.readCollection({
+				method, inputHash,
+				whenMin, whenMax: whenMin + duration,
+				createdMin, createdMax, cachePeriod,
+				rowToVal
+			})
+			if (values.length > 0) {
+				out.emit('hit', method, ...args, values.length)
+				return values
+			}
 		}
 		out.emit('miss', method, ...args)
 
@@ -62,18 +67,20 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 	}
 
 	// arguments -> cache key
-	const atomWithCache = async (methodName, cacheKeyData, args) => {
-		const createdMax = Date.now()
-		const createdMin = createdMax - cachePeriod
+	const atomWithCache = async (methodName, useCache, cacheKeyData, args) => {
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 
-		const cached = await storage.readAtom({
-			method: methodName, inputHash,
-			createdMin, createdMax, cachePeriod,
-		})
-		if (cached) {
-			out.emit('hit', methodName, ...args)
-			return cached
+		if (useCache) {
+			const createdMax = Date.now()
+			const createdMin = createdMax - cachePeriod
+			const cached = await storage.readAtom({
+				method: methodName, inputHash,
+				createdMin, createdMax, cachePeriod,
+			})
+			if (cached) {
+				out.emit('hit', methodName, ...args)
+				return cached
+			}
 		}
 		out.emit('miss', methodName, ...args)
 
@@ -99,7 +106,8 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 			if (!('duration' in opt)) throw new Error('missing opt.duration')
 			const duration = opt.duration * MINUTE
 
-			return collectionWithCache(method, [
+			const useCache = opt[CACHED] !== false
+			return collectionWithCache(method, useCache, [
 				stopId,
 				omit(opt, ['when', 'duration'])
 			], whenMin, duration, [stopId, opt], rowToVal, valToRow)
@@ -111,7 +119,8 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 	const arrivals = depsOrArrs('arrivals')
 
 	const journeys = (from, to, opt = {}) => {
-		return atomWithCache('journeys', [
+		const useCache = opt[CACHED] !== false
+		return atomWithCache('journeys', useCache, [
 			formatLocation(from),
 			formatLocation(to),
 			opt
@@ -119,11 +128,17 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 	}
 
 	const refreshJourney = (refreshToken, opt = {}) => {
-		return atomWithCache('refreshJourney', [refreshToken, opt], [refreshToken, opt])
+		return atomWithCache(
+			'refreshJourney',
+			opt[CACHED] !== false,
+			[refreshToken, opt],
+			[refreshToken, opt]
+		)
 	}
 
 	const trip = (id, lineName, opt = {}) => {
-		return atomWithCache('trip', [
+		const useCache = opt[CACHED] !== false
+		return atomWithCache('trip', useCache, [
 			id,
 			lineName,
 			omit(opt, ['when'])
@@ -131,16 +146,27 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 	}
 
 	const locations = (query, opt = {}) => {
-		return atomWithCache('locations', [query, opt], [query, opt])
+		return atomWithCache(
+			'locations',
+			opt[CACHED] !== false,
+			[query, opt],
+			[query, opt]
+		)
 	}
 
 	const stop = (id, opt = {}) => {
-		return atomWithCache('stop', [id, opt], [id, opt])
+		return atomWithCache(
+			'stop',
+			opt[CACHED] !== false,
+			[id, opt],
+			[id, opt]
+		)
 	}
 
 	// todo: cache individual locations, use a spatial index for querying
 	const nearby = (loc, opt = {}) => {
-		return atomWithCache('nearby', [
+		const useCache = opt[CACHED] !== false
+		return atomWithCache('nearby', useCache, [
 			formatLocation(loc),
 			opt
 		], [loc, opt])
@@ -148,7 +174,12 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 
 	// todo: cache individual movements, use a spatial index for querying
 	const radar = (bbox, opt = {}) => {
-		return atomWithCache('radar', [bbox, opt], [bbox, opt])
+		return atomWithCache(
+			'radar',
+			opt[CACHED] !== false,
+			[bbox, opt],
+			[bbox, opt]
+		)
 	}
 
 	const reachableFrom = (address, opt = {}) => {
@@ -158,7 +189,8 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 			cacheOpt.when = Math.round(new Date(cacheOpt.when) / 1000)
 		}
 
-		return atomWithCache('reachableFrom', [
+		const useCache = opt[CACHED] !== false
+		return atomWithCache('reachableFrom', useCache, [
 			address,
 			cacheOpt
 		], [address, opt])
@@ -168,6 +200,8 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 	await storage.init()
 
 	const out = new EventEmitter()
+	out.CACHED = CACHED
+
 	out.departures = departures
 	out.arrivals = arrivals
 	out.journeys = journeys
