@@ -1,7 +1,7 @@
 {
 	"name": "cached-hafas-client",
 	"description": "Pass in a HAFAS client, cache data from it.",
-	"version": "2.1.0",
+	"version": "2.1.1",
 	"main": "index.js",
 	"files": [
 		"index.js",
@@ -20,7 +20,7 @@
 	"bugs": "https://github.com/derhuerst/cached-hafas-client/issues",
 	"license": "ISC",
 	"engines": {
-		"node": ">=8"
+		"node": ">=10"
 	},
 	"dependencies": {
 		"common-prefix": "^1.1.0",
