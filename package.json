@@ -1,7 +1,7 @@
 {
 	"name": "cached-hafas-client",
 	"description": "Pass in a HAFAS client, cache data from it.",
-	"version": "2.1.2",
+	"version": "2.2.0",
 	"main": "index.js",
 	"files": [
 		"index.js",

@@ -201,6 +201,7 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 
 	const out = new EventEmitter()
 	out.CACHED = CACHED
+	out.profile = hafas.profile
 
 	out.departures = departures
 	out.arrivals = arrivals
