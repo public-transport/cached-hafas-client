@@ -1,11 +1,13 @@
 # cached-hafas-client
 
-**Pass in a [HAFAS client](https://github.com/public-transport/hafas-client), cache data from it.**
+**Pass in a [HAFAS client](https://github.com/public-transport/hafas-client/tree/5), cache data from it.**
 
 [![npm version](https://img.shields.io/npm/v/cached-hafas-client.svg)](https://www.npmjs.com/package/cached-hafas-client)
 [![build status](https://api.travis-ci.org/derhuerst/cached-hafas-client.svg?branch=master)](https://travis-ci.org/derhuerst/cached-hafas-client)
 ![ISC-licensed](https://img.shields.io/github/license/derhuerst/cached-hafas-client.svg)
 [![chat with me on Gitter](https://img.shields.io/badge/chat%20with%20me-on%20gitter-512e92.svg)](https://gitter.im/derhuerst)
+
+*Note:* This package is mainly **intended to prevent expensive and/or frequent API calls to HAFAS**. As a side effect, it *may* reduce local CPU load & latency, but that depends on the specific use case.
 
 `cached-hafas-client`'s core logic is separated from data storage code; You can pick the store implementation that fits your use case best. Right now the following stores are implemented:
 
@@ -83,6 +85,8 @@ cachedHafas.on('miss', (hafasClientMethod, ...args) => {
 ```js
 createCachedHafas(hafas, storage, opt = {})
 ```
+
+`hafas` must be a [`hafas-client@5`](https://github.com/public-transport/hafas-client/tree/5)-compatible API client.
 
 `opt` overrides this default configuration:
 

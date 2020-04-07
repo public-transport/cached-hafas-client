@@ -1,11 +1,11 @@
 'use strict'
 
 const createHafas = require('vbb-hafas')
-const {createClient: createRedis} = require('redis')
 const withCache = require('.')
-const createRedisStore = require('./stores/redis')
 
 // using Redis
+const {createClient: createRedis} = require('redis')
+const createRedisStore = require('./stores/redis')
 const db = createRedis()
 const store = createRedisStore(db)
 
@@ -39,6 +39,7 @@ const when = new Date(Date.now() + 60 * 60 * 1000)
 	const stop = await cachedHafas.stop(wollinerStr)
 	console.log(stop)
 
+	db.quit()
 })()
 .catch((err) => {
 	console.error(err)
