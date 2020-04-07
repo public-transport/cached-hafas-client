@@ -79,6 +79,15 @@ cachedHafas.on('miss', (hafasClientMethod, ...args) => {
 })
 ```
 
+## Bypassing the cache
+
+```js
+const {CACHED} = require('cached-hafas-client')
+
+// will always fresh data
+await cachedHafas.departures(wollinerStr, {[CACHED]: false})
+```
+
 
 ## API
 

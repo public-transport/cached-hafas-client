@@ -10,7 +10,7 @@ const SECOND = 1000
 const MINUTE = 60 * SECOND
 const HOUR = 60 * MINUTE
 
-const CACHED = Symbol('cache control')
+const CACHED = Symbol.for('cached-hafas-client:cached')
 
 const isObj = o => o && 'object' === typeof o && !Array.isArray(o)
 

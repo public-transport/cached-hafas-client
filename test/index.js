@@ -478,7 +478,7 @@ const runTests = (storeName, createDb, createStore) => {
 		t.end()
 	})
 
-	test(storeName + ' departures: same timespan -> reads from cache', async (t) => {
+	test(storeName + ' departures: bypassing the cache works', async (t) => {
 		const spy = createSpy(hafas.departures)
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
 
@@ -490,6 +490,10 @@ const runTests = (storeName, createDb, createStore) => {
 			when, duration: 10, [h.CACHED]: false
 		})
 		t.equal(spy.callCount, 2)
+		await h.departures(wollinerStr, {
+			when, duration: 10, [Symbol.for('cached-hafas-client:cached')]: false
+		})
+		t.equal(spy.callCount, 3)
 
 		await teardown()
 		t.end()
