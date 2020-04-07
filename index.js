@@ -107,6 +107,7 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 			const duration = opt.duration * MINUTE
 
 			const useCache = opt[CACHED] !== false
+			// todo: handle `results` properly
 			return collectionWithCache(method, useCache, [
 				stopId,
 				omit(opt, ['when', 'duration'])
