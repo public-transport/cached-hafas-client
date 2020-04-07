@@ -41,7 +41,7 @@ const store = createRedisStore(redis)
 
 // wrap HAFAS client with cache
 const withCache = require('cached-hafas-client')
-const cachedHafas = await withCache(hafas, store)
+const cachedHafas = withCache(hafas, store)
 
 const wollinerStr = '900000007105'
 const husemannstr = '900000110511'

@@ -22,7 +22,7 @@ const when = new Date(Date.now() + 60 * 60 * 1000)
 ;(async () => {
 
 	const hafas = createHafas('cached-hafas-client example')
-	const cachedHafas = await withCache(hafas, store)
+	const cachedHafas = withCache(hafas, store)
 
 	cachedHafas.on('hit', (method, ...args) => console.info('cache hit!', method, ...args))
 	cachedHafas.on('miss', (method, ...args) => console.info('cache miss!', method, ...args))

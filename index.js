@@ -26,7 +26,7 @@ const formatLocation = (loc) => {
 
 const STORAGE_METHODS = ['init', 'readCollection', 'writeCollection', 'readAtom', 'writeAtom']
 
-const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
+const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 	if (!isObj(storage)) {
 		throw new TypeError('storage must be an object')
 	}
@@ -36,9 +36,13 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 		}
 	}
 
+	// initialize storage
+	const pStorageInit = storage.init()
+
 	// arguments + time -> cache key
 	const collectionWithCache = async (method, useCache, cacheKeyData, whenMin, duration, args, rowToVal, valToRow) => {
 		const inputHash = hash(JSON.stringify(cacheKeyData))
+		await pStorageInit
 
 		if (useCache) {
 			const createdMax = Date.now()
@@ -69,6 +73,7 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 	// arguments -> cache key
 	const atomWithCache = async (methodName, useCache, cacheKeyData, args) => {
 		const inputHash = hash(JSON.stringify(cacheKeyData))
+		await pStorageInit
 
 		if (useCache) {
 			const createdMax = Date.now()
@@ -196,9 +201,6 @@ const createCachedHafas = async (hafas, storage, cachePeriod = MINUTE) => {
 			cacheOpt
 		], [address, opt])
 	}
-
-	// initialize storage
-	await storage.init()
 
 	const out = new EventEmitter()
 	out.CACHED = CACHED
