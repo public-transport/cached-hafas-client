@@ -6,7 +6,9 @@ const pick = require('lodash/pick')
 const omit = require('lodash/omit')
 const {EventEmitter} = require('events')
 
-const MINUTE = 60 * 1000
+const SECOND = 1000
+const MINUTE = 60 * SECOND
+const HOUR = 60 * MINUTE
 
 const CACHED = Symbol('cache control')
 
@@ -26,7 +28,7 @@ const formatLocation = (loc) => {
 
 const STORAGE_METHODS = ['init', 'readCollection', 'writeCollection', 'readAtom', 'writeAtom']
 
-const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
+const createCachedHafas = (hafas, storage, opt = {}) => {
 	if (!isObj(storage)) {
 		throw new TypeError('storage must be an object')
 	}
@@ -35,6 +37,20 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 			throw new TypeError(`invalid storage: storage.${method} must be a function`)
 		}
 	}
+	const cachePeriods = {
+		// results contain (or calculation depends on) prognosed delays
+		departures: 30 * SECOND, arrivals: 30 * SECOND,
+		journeys: 30 * SECOND, refreshJourney: MINUTE,
+		trip: 30 * SECOND,
+		reachableFrom: 30 * SECOND,
+		// results contain prognosed positions
+		radar: 10 * SECOND,
+		// rather static data
+		locations: HOUR,
+		stop: HOUR,
+		nearby: HOUR,
+		...(opt.cachePeriods || {}),
+	}
 
 	// initialize storage
 	const pStorageInit = storage.init()
@@ -42,6 +58,7 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 	// arguments + time -> cache key
 	const collectionWithCache = async (method, useCache, cacheKeyData, whenMin, duration, args, rowToVal, valToRow) => {
 		const inputHash = hash(JSON.stringify(cacheKeyData))
+		const cachePeriod = cachePeriods[method] || 10 * SECOND
 		await pStorageInit
 
 		if (useCache) {
@@ -73,6 +90,7 @@ const createCachedHafas = (hafas, storage, cachePeriod = MINUTE) => {
 	// arguments -> cache key
 	const atomWithCache = async (methodName, useCache, cacheKeyData, args) => {
 		const inputHash = hash(JSON.stringify(cacheKeyData))
+		const cachePeriod = cachePeriods[methodName] || 10 * SECOND
 		await pStorageInit
 
 		if (useCache) {

@@ -78,6 +78,31 @@ cachedHafas.on('miss', (hafasClientMethod, ...args) => {
 ```
 
 
+## API
+
+```js
+createCachedHafas(hafas, storage, opt = {})
+```
+
+`opt` overrides this default configuration:
+
+```js
+{
+	cachePeriods: {
+		departures: 30_1000, arrivals: 30_1000, // 30s
+		journeys: 30_1000, // 30s
+		refreshJourney: 60_1000, // 1m
+		trip: 30_1000, // 30s
+		radar: 10_1000, // 10s
+		locations: 3_600_1000, // 1h
+		stop: 3_600_1000, // 1h
+		nearby: 3_600_1000, // 1h
+		reachableFrom: 30_1000,
+	},
+}
+```
+
+
 ## Contributing
 
 If you have a question or need support using `cached-hafas-client`, please double-check your code and setup first. If you think you have found a bug or want to propose a feature, use [the issues page](https://github.com/derhuerst/cached-hafas-client/issues).

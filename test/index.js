@@ -34,7 +34,15 @@ const runTests = (storeName, createDb, createStore) => {
 		const mocked = Object.assign(Object.create(hafas), mocks)
 		const {db, teardown} = await createDb()
 		const store = createStore(db)
-		const cachedMocked = createCachedHafas(mocked, store, ttl)
+		const cachedMocked = createCachedHafas(mocked, store, {
+			cachePeriods: {
+				departures: ttl, arrivals: ttl,
+				journeys: ttl, refreshJourney: ttl, trip: ttl,
+				radar: ttl,
+				locations: ttl, stop: ttl, nearby: ttl,
+				reachableFrom: ttl,
+			}
+		})
 		return {hafas: cachedMocked, teardown}
 	}
 
