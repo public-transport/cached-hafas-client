@@ -41,26 +41,19 @@ const store = createRedisStore(redis)
 
 // wrap HAFAS client with cache
 const withCache = require('cached-hafas-client')
-const cachedHafas = withCache(hafas, store)
+const cachedHafas = await withCache(hafas, store)
 
-cachedHafas.init((err) => { // initialize the DB
-	if (err) return console.error(err)
+const wollinerStr = '900000007105'
+const husemannstr = '900000110511'
+const when = new Date(Date.now() + 60 * 60 * 1000)
 
-	const wollinerStr = '900000007105'
-	const husemannstr = '900000110511'
-	const when = new Date(Date.now() + 60 * 60 * 1000)
+// will fetch fresh data from HAFAS
+await cachedHafas.departures(wollinerStr, {duration: 10, when})
 
-	// will fetch fresh data from HAFAS
-	cachedHafas.departures(wollinerStr, {duration: 10, when})
-	.then(() => {
-		// within the "time range" of a recent departures() call,
-		// so it will use the cached data
-		return cachedHafas.departures(wollinerStr, {
-			duration: 3, when: new Date(+when + 3 * 60 * 1000)
-		})
-	})
-	.then(console.log)
-	.catch(console.error)
+// within the "time range" of a recent departures() call,
+// so it will use the cached data
+await cachedHafas.departures(wollinerStr, {
+	duration: 3, when: new Date(+when + 3 * 60 * 1000)
 })
 ```
 
