@@ -15,9 +15,9 @@
 		"storage"
 	],
 	"author": "Jannis R <mail@jannisr.de>",
-	"homepage": "https://github.com/derhuerst/cached-hafas-client",
-	"repository": "derhuerst/cached-hafas-client",
-	"bugs": "https://github.com/derhuerst/cached-hafas-client/issues",
+	"homepage": "https://github.com/public-transport/cached-hafas-client",
+	"repository": "public-transport/cached-hafas-client",
+	"bugs": "https://github.com/public-transport/cached-hafas-client/issues",
 	"license": "ISC",
 	"engines": {
 		"node": ">=10"
