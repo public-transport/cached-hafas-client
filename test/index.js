@@ -511,6 +511,24 @@ const runTests = (storeName, createDb, createStore) => {
 		await teardown()
 		t.end()
 	})
+
+	test(storeName + ' rounds opt.when to seconds', async (t) => {
+		const spy = createSpy(hafas.departures)
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
+
+		await h.departures(wollinerStr, {
+			duration: 3, when,
+		})
+		t.equal(spy.callCount, 1)
+
+		await h.departures(wollinerStr, {
+			duration: 3, when: +new Date(when) - 200, // 200ms earlier
+		})
+		t.equal(spy.callCount, 1)
+
+		await teardown()
+		t.end()
+	})
 }
 
 runTests('sqlite', createSqliteDb, createSqliteStore)

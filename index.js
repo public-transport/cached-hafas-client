@@ -18,6 +18,8 @@ const hash = (str) => {
 	return createHash('sha256').update(str, 'utf8').digest('hex').slice(0, 32)
 }
 
+const round1000 = x => Math.round(x / 1000) * 1000
+
 const formatLocation = (loc) => {
 	if (!loc) throw new Error('invalid location! pass a string or an object.')
 	if ('string' === typeof loc) return loc
@@ -62,7 +64,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		await pStorageInit
 
 		if (useCache) {
-			const createdMax = Date.now()
+			const createdMax = round1000(Date.now())
 			const createdMin = createdMax - cachePeriod
 			const values = await storage.readCollection({
 				method, inputHash,
@@ -77,7 +79,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		}
 		out.emit('miss', method, ...args)
 
-		const created = Date.now()
+		const created = round1000(Date.now())
 		const vals = await hafas[method](...args)
 		await storage.writeCollection({
 			method, inputHash, when: whenMin, duration,
@@ -94,7 +96,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		await pStorageInit
 
 		if (useCache) {
-			const createdMax = Date.now()
+			const createdMax = round1000(Date.now())
 			const createdMin = createdMax - cachePeriod
 			const cached = await storage.readAtom({
 				method: methodName, inputHash,
@@ -107,7 +109,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		}
 		out.emit('miss', methodName, ...args)
 
-		const created = Date.now()
+		const created = round1000(Date.now())
 		const val = await hafas[methodName](...args)
 		await storage.writeAtom({
 			method: methodName, inputHash,
@@ -127,7 +129,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		const query = (stopId, opt = {}) => {
 			let useCache = opt[CACHED] !== false
 
-			const whenMin = opt.when ? +new Date(opt.when) : Date.now()
+			const whenMin = round1000(opt.when ? +new Date(opt.when) : Date.now())
 			if (!('duration' in opt)) useCache = false
 			const duration = opt.duration * MINUTE
 
@@ -211,7 +213,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		let cacheOpt = opt
 		if ('when' in cacheOpt) {
 			cacheOpt = Object.assign({}, opt)
-			cacheOpt.when = Math.round(new Date(cacheOpt.when) / 1000)
+			cacheOpt.when = Math.round(+new Date(cacheOpt.when) / 1000)
 		}
 
 		const useCache = opt[CACHED] !== false
