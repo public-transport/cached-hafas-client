@@ -529,6 +529,26 @@ const runTests = (storeName, createDb, createStore) => {
 		await teardown()
 		t.end()
 	})
+
+	test(storeName + ' exposes CACHED boolean & TIME', async (t) => {
+		const spy = createSpy(hafas.departures)
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
+
+		const r1 = await h.departures(wollinerStr, {
+			when, duration: 2
+		})
+		t.ok(r1[h.CACHED] !== true)
+		t.ok(Number.isInteger(r1[h.TIME]))
+
+		const r2 = await h.departures(wollinerStr, {
+			when, duration: 2
+		})
+		t.equal(r2[h.CACHED], true)
+		t.ok(Number.isInteger(r2[h.TIME]))
+
+		await teardown()
+		t.end()
+	})
 }
 
 runTests('sqlite', createSqliteDb, createSqliteStore)

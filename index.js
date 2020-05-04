@@ -11,6 +11,7 @@ const MINUTE = 60 * SECOND
 const HOUR = 60 * MINUTE
 
 const CACHED = Symbol.for('cached-hafas-client:cached')
+const TIME = Symbol.for('cached-hafas-client:time')
 
 const isObj = o => o && 'object' === typeof o && !Array.isArray(o)
 
@@ -59,6 +60,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 
 	// arguments + time -> cache key
 	const collectionWithCache = async (method, useCache, cacheKeyData, whenMin, duration, args, rowToVal, valToRow) => {
+		const t0 = Date.now()
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 		const cachePeriod = cachePeriods[method] || 10 * SECOND
 		await pStorageInit
@@ -74,6 +76,8 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 			})
 			if (values.length > 0) {
 				out.emit('hit', method, ...args, values.length)
+				Object.defineProperty(values, CACHED, {value: true})
+				Object.defineProperty(values, TIME, {value: Date.now() - t0})
 				return values
 			}
 		}
@@ -86,11 +90,13 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 			created, cachePeriod,
 			rows: vals.map(valToRow)
 		})
+		Object.defineProperty(vals, TIME, {value: Date.now() - t0})
 		return vals
 	}
 
 	// arguments -> cache key
 	const atomWithCache = async (methodName, useCache, cacheKeyData, args) => {
+		const t0 = Date.now()
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 		const cachePeriod = cachePeriods[methodName] || 10 * SECOND
 		await pStorageInit
@@ -104,6 +110,8 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 			})
 			if (cached) {
 				out.emit('hit', methodName, ...args)
+				Object.defineProperty(cached, CACHED, {value: true})
+				Object.defineProperty(cached, TIME, {value: Date.now() - t0})
 				return cached
 			}
 		}
@@ -116,6 +124,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 			created, cachePeriod,
 			val,
 		})
+		Object.defineProperty(val, TIME, {value: Date.now() - t0})
 		return val
 	}
 
@@ -225,6 +234,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 
 	const out = new EventEmitter()
 	out.CACHED = CACHED
+	out.TIME = TIME
 	out.profile = hafas.profile
 
 	out.departures = departures
