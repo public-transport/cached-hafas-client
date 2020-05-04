@@ -498,6 +498,19 @@ const runTests = (storeName, createDb, createStore) => {
 		await teardown()
 		t.end()
 	})
+
+	test(storeName + 'departures()/arrivals() without duration do not use the cache', async (t) => {
+		const spy = createSpy(hafas.departures)
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
+
+		await h.departures(wollinerStr, {
+			when,
+		})
+		t.equal(spy.callCount, 1)
+
+		await teardown()
+		t.end()
+	})
 }
 
 runTests('sqlite', createSqliteDb, createSqliteStore)

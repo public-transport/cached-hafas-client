@@ -125,11 +125,12 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		})
 
 		const query = (stopId, opt = {}) => {
+			let useCache = opt[CACHED] !== false
+
 			const whenMin = opt.when ? +new Date(opt.when) : Date.now()
-			if (!('duration' in opt)) throw new Error('missing opt.duration')
+			if (!('duration' in opt)) useCache = false
 			const duration = opt.duration * MINUTE
 
-			const useCache = opt[CACHED] !== false
 			// todo: handle `results` properly
 			return collectionWithCache(method, useCache, [
 				stopId,
