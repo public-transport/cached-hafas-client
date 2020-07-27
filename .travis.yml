@@ -10,9 +10,7 @@ addons:
 script:
   - (redis-server & )
   - npm test
-cache:
-  directories:
-  - node_modules
+cache: npm
 notifications:
   email:
     on_success: never
