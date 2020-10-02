@@ -1,7 +1,7 @@
 {
 	"name": "cached-hafas-client",
 	"description": "Pass in a HAFAS client, cache data from it.",
-	"version": "3.3.2",
+	"version": "3.3.3",
 	"main": "index.js",
 	"files": [
 		"index.js",
@@ -41,7 +41,7 @@
 		"dataVersion": 2
 	},
 	"peerDependencies": {
-		"hafas-client": "5.0 - 5.7"
+		"hafas-client": "5.0 - 5.9"
 	},
 	"scripts": {
 		"test": "env NODE_ENV=dev node test/index.js | tap-spec",
