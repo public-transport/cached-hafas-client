@@ -232,6 +232,20 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		], [address, opt])
 	}
 
+	const tripsByName = (lineNameOrFahrtNr, opt = {}) => {
+		let cacheOpt = opt
+		if ('when' in cacheOpt) {
+			cacheOpt = Object.assign({}, opt)
+			cacheOpt.when = round1000(+new Date(cacheOpt.when))
+		}
+
+		const useCache = opt[CACHED] !== false
+		return atomWithCache('tripsByName', useCache, [
+			lineNameOrFahrtNr,
+			cacheOpt
+		], [lineNameOrFahrtNr, opt])
+	}
+
 	const out = new EventEmitter()
 	out.CACHED = CACHED
 	out.TIME = TIME
@@ -242,6 +256,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 	out.journeys = journeys
 	if (hafas.refreshJourney) out.refreshJourney = refreshJourney
 	if (hafas.trip) out.trip = trip
+	if (hafas.tripsByName) out.tripsByName = tripsByName
 	out.locations = locations
 	out.stop = stop
 	out.nearby = nearby
