@@ -83,6 +83,58 @@ const runTests = (storeName, createDb, createStore) => {
 		t.end()
 	})
 
+	test(storeName + ' departures: compares dep.when properly', async (t) => {
+		const spy = createSpy(async () => [
+				{when: '2020-11-11T11:00+01:00'},
+				{when: '2020-11-11T12:11+02:00'},
+				{when: '2020-11-11T11:22+01:00'},
+			])
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
+
+		const r1 = await h.departures(wollinerStr, {
+			duration: 30, when: '2020-11-11T11:00+01:00',
+		})
+		t.equal(r1.length, 3)
+
+		// '2020-11-11T11:20+01:00' < '2020-11-11T12:11+02:00' // true
+		// Date.parse('2020-11-11T11:20+01:00') < Date.parse('2020-11-11T12:11+02:00') // false
+		const r2 = await h.departures(wollinerStr, {
+			duration: 20, when: '2020-11-11T11:00+01:00',
+		})
+		t.equal(r2.length, 2)
+
+		await teardown()
+		t.end()
+	})
+
+	test(storeName + ' departures: compares opt.when properly', async (t) => {
+		const spy = createSpy(async () => [
+				{when: '2020-11-11T11:00+01:00'},
+				{when: '2020-11-11T12:11+02:00'},
+				{when: '2020-11-11T11:22+01:00'},
+			])
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
+
+		await h.departures(wollinerStr, {
+			duration: 30, when: '2020-11-11T11:00+01:00',
+		})
+		t.equal(spy.callCount, 1)
+
+		// '2020-11-11T11:11+01:00' < '2020-11-11T11:11+02:00' // true
+		// Date.parse('2020-11-11T11:11+01:00') < Date.parse('2020-11-11T11:11+02:00') // false
+		await h.departures(wollinerStr, {
+			duration: 30, when: '2020-11-11T10:00+00:00',
+		})
+		t.equal(spy.callCount, 1)
+		await h.departures(wollinerStr, {
+			duration: 30, when: '2020-11-11T11:00+02:00',
+		})
+		t.equal(spy.callCount, 2)
+
+		await teardown()
+		t.end()
+	})
+
 	test(storeName + ' departures: longer timespan -> fetches new', async (t) => {
 		const spy = createSpy(hafas.departures)
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})

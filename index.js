@@ -131,7 +131,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 	const depsOrArrs = (method) => {
 		const rowToVal = row => JSON.parse(row.data)
 		const valToRow = (arrOrDep) => ({
-			when: arrOrDep.when,
+			when: +new Date(arrOrDep.when),
 			data: JSON.stringify(arrOrDep)
 		})
 
