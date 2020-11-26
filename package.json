@@ -1,7 +1,7 @@
 {
 	"name": "cached-hafas-client",
 	"description": "Pass in a HAFAS client, cache data from it.",
-	"version": "3.4.1",
+	"version": "3.5.0",
 	"main": "index.js",
 	"files": [
 		"index.js",
@@ -31,6 +31,7 @@
 		"shallow-clone": "^3.0.1"
 	},
 	"devDependencies": {
+		"eslint": "^7.14.0",
 		"luxon": "^1.3.3",
 		"p-retry": "^4.0.0",
 		"sqlite3": "^4.0.2",
@@ -46,7 +47,8 @@
 		"hafas-client": "5.0 - 5.10"
 	},
 	"scripts": {
+		"lint": "eslint .",
 		"test": "env NODE_ENV=dev node test/index.js | tap-spec",
-		"prepublishOnly": "npm test"
+		"prepublishOnly": "npm run lint && npm test"
 	}
 }
