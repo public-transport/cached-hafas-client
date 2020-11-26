@@ -31,6 +31,18 @@ const formatLocation = (loc) => {
 
 const STORAGE_METHODS = ['init', 'readCollection', 'writeCollection', 'readAtom', 'writeAtom']
 
+const silenceRejections = async (run) => {
+	try {
+		return await run()
+	} catch (err) {
+		if (
+			err instanceof RangeError ||
+			err instanceof ReferenceError ||
+			err instanceof TypeError
+		) throw err
+	}
+}
+
 const createCachedHafas = (hafas, storage, opt = {}) => {
 	if (!isObj(storage)) {
 		throw new TypeError('storage must be an object')
@@ -68,13 +80,13 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		if (useCache) {
 			const createdMax = round1000(Date.now())
 			const createdMin = createdMax - cachePeriod
-			const values = await storage.readCollection({
+			const values = await silenceRejections(storage.readCollection.bind(storage, {
 				method, inputHash,
 				whenMin, whenMax: whenMin + duration,
 				createdMin, createdMax, cachePeriod,
 				rowToVal
-			})
-			if (values.length > 0) {
+			}))
+			if (values && values.length > 0) {
 				out.emit('hit', method, ...args, values.length)
 				Object.defineProperty(values, CACHED, {value: true})
 				Object.defineProperty(values, TIME, {value: Date.now() - t0})
@@ -85,11 +97,11 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 
 		const created = round1000(Date.now())
 		const vals = await hafas[method](...args)
-		await storage.writeCollection({
+		await silenceRejections(storage.writeCollection.bind(storage, {
 			method, inputHash, when: whenMin, duration,
 			created, cachePeriod,
 			rows: vals.map(valToRow)
-		})
+		}))
 		Object.defineProperty(vals, TIME, {value: Date.now() - t0})
 		return vals
 	}
@@ -104,10 +116,10 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		if (useCache) {
 			const createdMax = round1000(Date.now())
 			const createdMin = createdMax - cachePeriod
-			const cached = await storage.readAtom({
+			const cached = await silenceRejections(storage.readAtom.bind(storage, {
 				method: methodName, inputHash,
 				createdMin, createdMax, cachePeriod,
-			})
+			}))
 			if (cached) {
 				out.emit('hit', methodName, ...args)
 				Object.defineProperty(cached, CACHED, {value: true})
@@ -119,11 +131,11 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 
 		const created = round1000(Date.now())
 		const val = await hafas[methodName](...args)
-		await storage.writeAtom({
+		await silenceRejections(storage.writeAtom.bind(storage, {
 			method: methodName, inputHash,
 			created, cachePeriod,
 			val,
-		})
+		}))
 		Object.defineProperty(val, TIME, {value: Date.now() - t0})
 		return val
 	}

@@ -34,6 +34,16 @@ const torfstr17 = {
 	longitude: 13.350042
 }
 
+const rejects = async (t, fn) => {
+	try {
+		await fn()
+	} catch (err) {
+		t.ok(fn.name + ' rejected')
+		return;
+	}
+	t.fail(fn.name + ' did not reject')
+}
+
 const test = tapePromise(tape)
 
 const runTests = (storeName, createDb, createStore) => {
@@ -609,6 +619,113 @@ const runTests = (storeName, createDb, createStore) => {
 		t.end()
 	})
 }
+
+test('silences cache failures', async (t) => {
+	const dep = {when: '2020-11-11T11:11+01:00'}
+	const journey = {id: 'abc'}
+	const mockedHafas = {
+		departures: async () => [dep],
+		journeys: async () => [journey],
+	}
+	const withStoreMocks = (storeMocks = {}) => {
+		return createCachedHafas(mockedHafas, {
+			init: async () => {},
+			readCollection: async () => [],
+			writeCollection: async () => {},
+			readAtom: async () => null,
+			writeAtom: async () => {},
+			...storeMocks,
+		})
+	}
+
+	await withStoreMocks({
+		readCollection: () => {throw new Error('foo')},
+	}).departures('123', {duration: 1})
+	await withStoreMocks({
+		readCollection: async () => {throw new Error('foo')},
+	}).departures('123', {duration: 1})
+	await rejects(t, async () => {
+		await withStoreMocks({
+			readCollection: async () => {throw new TypeError('foo')},
+		}).departures('123', {duration: 1})
+	})
+	await rejects(t, async () => {
+		await withStoreMocks({
+			readCollection: async () => {throw new ReferenceError('foo')},
+		}).departures('123', {duration: 1})
+	})
+	await rejects(t, async () => {
+		await withStoreMocks({
+			readCollection: async () => {throw new RangeError('foo')},
+		}).departures('123', {duration: 1})
+	})
+
+	await withStoreMocks({
+		writeCollection: () => {throw new Error('foo')},
+	}).departures('123', {duration: 1})
+	await withStoreMocks({
+		writeCollection: async () => {throw new Error('foo')},
+	}).departures('123', {duration: 1})
+	await rejects(t, async () => {
+		await withStoreMocks({
+			writeCollection: async () => {throw new TypeError('foo')},
+		}).departures('123', {duration: 1})
+	})
+	await rejects(t, async () => {
+		await withStoreMocks({
+			writeCollection: async () => {throw new ReferenceError('foo')},
+		}).departures('123', {duration: 1})
+	})
+	await rejects(t, async () => {
+		await withStoreMocks({
+			writeCollection: async () => {throw new RangeError('foo')},
+		}).departures('123', {duration: 1})
+	})
+
+	await withStoreMocks({
+		readAtom: () => {throw new Error('foo')},
+	}).journeys('123', '234')
+	await withStoreMocks({
+		readAtom: async () => {throw new Error('foo')},
+	}).journeys('123', '234')
+	await rejects(t, async () => {
+		await withStoreMocks({
+			readAtom: async () => {throw new TypeError('foo')},
+		}).journeys('123', '234')
+	})
+	await rejects(t, async () => {
+		await withStoreMocks({
+			readAtom: async () => {throw new ReferenceError('foo')},
+		}).journeys('123', '234')
+	})
+	await rejects(t, async () => {
+		await withStoreMocks({
+			readAtom: async () => {throw new RangeError('foo')},
+		}).journeys('123', '234')
+	})
+
+	await withStoreMocks({
+		writeAtom: () => {throw new Error('foo')},
+	}).journeys('123', '234')
+	await withStoreMocks({
+		writeAtom: async () => {throw new Error('foo')},
+	}).journeys('123', '234')
+	await rejects(t, async () => {
+		await withStoreMocks({
+			writeAtom: async () => {throw new TypeError('foo')},
+		}).journeys('123', '234')
+	})
+	await rejects(t, async () => {
+		await withStoreMocks({
+			writeAtom: async () => {throw new ReferenceError('foo')},
+		}).journeys('123', '234')
+	})
+	await rejects(t, async () => {
+		await withStoreMocks({
+			writeAtom: async () => {throw new RangeError('foo')},
+		}).journeys('123', '234')
+	})
+})
 
 runTests('sqlite', createSqliteDb, createSqliteStore)
 runTests('redis', createRedisDb, createRedisStore)
