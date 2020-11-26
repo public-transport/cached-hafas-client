@@ -6,6 +6,7 @@ const pRetry = require('p-retry')
 
 const createSqliteStore = require('../stores/sqlite')
 const createRedisStore = require('../stores/redis')
+const createInMemStore = require('../stores/in-memory')
 const createCachedHafas = require('..')
 
 const {
@@ -14,6 +15,12 @@ const {
 	createSpy, delay,
 	createSqliteDb, createRedisDb
 } = require('./util')
+
+// fake the Redis/SQLite helper API
+const createInMemDb = async () => ({
+	db: {},
+	teardown: async () => {},
+})
 
 const minute = 60 * 1000
 const hour = 60 * minute
@@ -605,6 +612,7 @@ const runTests = (storeName, createDb, createStore) => {
 
 runTests('sqlite', createSqliteDb, createSqliteStore)
 runTests('redis', createRedisDb, createRedisStore)
+runTests('in-memory', createInMemDb, createInMemStore)
 test.onFinish(() => {
 	process.exit()
 })
