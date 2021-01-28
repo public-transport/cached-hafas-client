@@ -5,8 +5,8 @@
 [![npm version](https://img.shields.io/npm/v/cached-hafas-client.svg)](https://www.npmjs.com/package/cached-hafas-client)
 [![build status](https://api.travis-ci.org/public-transport/cached-hafas-client.svg?branch=master)](https://travis-ci.org/public-transport/cached-hafas-client)
 ![ISC-licensed](https://img.shields.io/github/license/public-transport/cached-hafas-client.svg)
-[![chat on gitter](https://badges.gitter.im/public-transport/Lobby.svg)](https://gitter.im/public-transport/Lobby)
-[![support Jannis via GitHub Sponsors](https://img.shields.io/badge/support%20Jannis-donate-fa7664.svg)](https://github.com/sponsors/derhuerst)
+[![support me via GitHub Sponsors](https://img.shields.io/badge/support%20me-donate-fa7664.svg)](https://github.com/sponsors/derhuerst)
+[![chat with me on Twitter](https://img.shields.io/badge/chat%20with%20me-on%20Twitter-1da1f2.svg)](https://twitter.com/derhuerst)
 
 *Note:* This package is mainly **intended to prevent expensive and/or frequent API calls to HAFAS**. As a side effect, it *may* reduce local CPU load & latency, but that depends on the specific use case.
 
