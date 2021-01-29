@@ -222,6 +222,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 
 	// todo: cache individual movements, use a spatial index for querying
 	const radar = (bbox, opt = {}) => {
+		// todo: opt.when?
 		return atomWithCache(
 			'radar',
 			opt[CACHED] !== false,
@@ -258,6 +259,33 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		], [lineNameOrFahrtNr, opt])
 	}
 
+	const remarks = (opt = {}) => {
+		return atomWithCache(
+			'remarks',
+			opt[CACHED] !== false,
+			[opt],
+			[opt]
+		)
+	}
+
+	const lines = (query, opt = {}) => {
+		return atomWithCache(
+			'lines',
+			opt[CACHED] !== false,
+			[query, opt],
+			[query, opt]
+		)
+	}
+
+	const serverInfo = (opt = {}) => {
+		return atomWithCache(
+			'serverInfo',
+			opt[CACHED] !== false,
+			[opt],
+			[opt]
+		)
+	}
+
 	const out = new EventEmitter()
 	out.CACHED = CACHED
 	out.TIME = TIME
@@ -274,6 +302,9 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 	out.nearby = nearby
 	if (hafas.radar) out.radar = radar
 	if (hafas.reachableFrom) out.reachableFrom = reachableFrom
+	if (hafas.remarks) out.remarks = serverInfo
+	if (hafas.lines) out.lines = serverInfo
+	if (hafas.serverInfo) out.serverInfo = serverInfo
 	return out
 }
 
