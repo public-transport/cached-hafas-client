@@ -27,9 +27,7 @@ npm install cached-hafas-client
 
 ## Usage
 
-Because `cached-hafas-client` caches HAFAS responses by "request signature", it is build on the assumption that, aside from the ever-changing transit data underneath, HAFAS works deterministically.
-
-This is why **you must send deterministic queries**; for example, you *must* pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/5/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/5/docs/arrivals.md) for it to know which "time range" the data returned by HAFAS is for.
+Let's set up a cached `hafas-client` instance.
 
 ```js
 // create HAFAS client
@@ -45,7 +43,13 @@ const store = createRedisStore(redis)
 // wrap HAFAS client with cache
 const withCache = require('cached-hafas-client')
 const cachedHafas = withCache(hafas, store)
+```
 
+Because `cached-hafas-client` caches HAFAS responses by "request signature", it is build on the assumption that, aside from the ever-changing transit data underneath, HAFAS works deterministically.
+
+This is why **you must send deterministic queries**; for example, you *must* pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/5/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/5/docs/arrivals.md) for it to know which "time range" the data returned by HAFAS is for.
+
+```js
 const wollinerStr = '900000007105'
 const husemannstr = '900000110511'
 const when = new Date(Date.now() + 60 * 60 * 1000)
@@ -53,7 +57,7 @@ const when = new Date(Date.now() + 60 * 60 * 1000)
 // will fetch fresh data from HAFAS
 await cachedHafas.departures(wollinerStr, {duration: 10, when})
 
-// within the "time range" of a recent departures() call,
+// within the "time range" of the departures() call above,
 // so it will use the cached data
 await cachedHafas.departures(wollinerStr, {
 	duration: 3, when: new Date(+when + 3 * 60 * 1000)
