@@ -25,9 +25,9 @@
 	"dependencies": {
 		"common-prefix": "^1.1.0",
 		"debug": "^4.0.0",
+		"ioredis": "^4.22.0",
 		"lodash": "^4.17.10",
 		"quick-lru": "^5.1.1",
-		"redis": "^3.0.0",
 		"shallow-clone": "^3.0.1"
 	},
 	"devDependencies": {

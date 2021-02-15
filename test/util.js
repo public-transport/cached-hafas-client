@@ -5,7 +5,7 @@ const DEBUG = process.env.NODE_DEBUG === 'cached-hafas-client'
 const createHafas = require('vbb-hafas')
 const {DateTime} = require('luxon')
 const sqlite3 = DEBUG ? require('sqlite3').verbose() : require('sqlite3')
-const {createClient: createRedis} = require('redis')
+const Redis = require('ioredis')
 
 const hafas = createHafas('cached-hafas-client test')
 
@@ -38,7 +38,7 @@ const createSqliteDb = () => {
 }
 
 const createRedisDb = () => {
-	const db = createRedis()
+	const db = new Redis()
 	const teardown = () => {
 		return new Promise((resolve, reject) => {
 			db.flushdb((err) => {

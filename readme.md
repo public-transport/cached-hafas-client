@@ -35,9 +35,9 @@ const createHafas = require('vbb-hafas')
 const hafas = createHafas('my-awesome-program')
 
 // create a store backed by Redis
-const {createClient: createRedis} = require('redis')
+const Redis = require('ioredis')
 const createRedisStore = require('cached-hafas-client/stores/redis')
-const redis = createRedis()
+const redis = new Redis()
 const store = createRedisStore(redis)
 
 // wrap HAFAS client with cache

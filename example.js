@@ -4,9 +4,9 @@ const createHafas = require('vbb-hafas')
 const withCache = require('.')
 
 // using Redis
-const {createClient: createRedis} = require('redis')
+const Redis = require('ioredis')
 const createRedisStore = require('./stores/redis')
-const db = createRedis()
+const db = new Redis()
 const store = createRedisStore(db)
 
 // using SQLite

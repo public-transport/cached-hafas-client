@@ -1,7 +1,6 @@
 'use strict'
 
 const {ok} = require('assert')
-const {promisify} = require('util')
 const {randomBytes} = require('crypto')
 const debug = require('debug')('cached-hafas-client:redis')
 const commonPrefix = require('common-prefix')
@@ -15,24 +14,19 @@ const COLLECTIONS_ROWS = 'r'
 const ATOMS = 'a'
 
 const createStore = (db) => {
-	const dbGet = promisify(db.get.bind(db))
-	const dbSet = promisify(db.set.bind(db))
-	const dbExpire = promisify(db.expire.bind(db))
-	const dbScan = promisify(db.scan.bind(db))
-
 	const init = async () => {
 		debug('init')
 	}
 
 	const read = async (key) => {
 		debug('read', key)
-		return await dbGet(key)
+		return await db.get(key)
 	}
 
 	const write = async (key, val, ttl) => {
 		debug('write', key, val.length, ttl)
-		await dbSet(key, val)
-		await dbExpire(key, Math.round(ttl / 1000))
+		await db.set(key, val)
+		await db.expire(key, Math.round(ttl / 1000))
 	}
 
 	const scanner = (pattern) => {
@@ -42,7 +36,7 @@ const createStore = (db) => {
 			if (!initial && cursor === '0') return {done: true, value: null}
 			initial = false
 
-			const res = await dbScan(cursor, 'MATCH', pattern, 'COUNT', '30')
+			const res = await db.scan(cursor, 'MATCH', pattern, 'COUNT', '30')
 			cursor = res[0]
 			return {done: false, value: res[1]}
 		}
