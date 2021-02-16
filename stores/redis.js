@@ -82,12 +82,46 @@ end
 return {};
 `
 
+const READ_MATCHING_ATOM = `\
+local prefix = ARGV[1];
+local created_min = tonumber(ARGV[2]);
+local created_max = tonumber(ARGV[3]);
+
+local cursor = "0";
+while true do
+	-- todo: scan in reverse order to, when in doubt, get the latest atom
+	local res = redis.call("scan", cursor, "match", prefix .. "*", "COUNT", 30);
+	cursor = res[1];
+
+	for i, key in ipairs(res[2]) do
+		local _, __, created = string.find(key, "[^:]+:[^:]+:[^:]+:[^:]+:([^:]+)");
+		created = tonumber(created);
+
+		if created >= created_min and created <= created_max
+		then
+			local atom = redis.call("get", key);
+			return atom;
+		end
+	end
+
+	if cursor == "0" then
+		break
+	end
+end
+`
+
 const createStore = (db) => {
 	// todo: stop mutating `db`
 	if (!db.readMatchingCollection) {
 		db.defineCommand('readMatchingCollection', {
 			numberOfKeys: 0,
 			lua: READ_MATCHING_COLLECTION,
+		})
+	}
+	if (!db.readMatchingAtom) {
+		db.defineCommand('readMatchingAtom', {
+			numberOfKeys: 0,
+			lua: READ_MATCHING_ATOM,
 		})
 	}
 
@@ -186,19 +220,11 @@ const createStore = (db) => {
 			[VERSION, ATOMS, method, inputHash, createdMin].join(':'),
 			[VERSION, ATOMS, method, inputHash, createdMax].join(':')
 		])
-
-		// todo: scan in reverse order to, when in doubt, get the latest item
-		for await (const keys of scan(keysPrefix + '*')) {
-			for (let key of keys) {
-				const created = parseInt(key.split(':')[4])
-				if (Number.isNaN(created) || created < createdMin || created > createdMax) continue
-
-				const val = await db.get(key)
-				return deserialize(val)
-			}
-
-		}
-		return null
+		const val = await db.readMatchingAtom([
+			keysPrefix,
+			createdMin, createdMax,
+		])
+		return val ? deserialize(val) : null
 	}
 
 	const writeAtom = async (args) => {
