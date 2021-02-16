@@ -25,8 +25,7 @@ const createStore = (db) => {
 
 	const write = async (key, val, ttl) => {
 		debug('write', key, val.length, ttl)
-		await db.set(key, val)
-		await db.expire(key, Math.round(ttl / 1000))
+		await db.set(key, val, 'PX', ttl)
 	}
 
 	const scanner = (pattern) => {
