@@ -41,7 +41,7 @@
 		"vbb-hafas": "^7.0.1"
 	},
 	"cached-hafas-client": {
-		"dataVersion": 2
+		"dataVersion": 3
 	},
 	"peerDependencies": {
 		"hafas-client": "5.0 - 5.15"

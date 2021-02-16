@@ -13,7 +13,84 @@ const COLLECTIONS = 'c'
 const COLLECTIONS_ROWS = 'r'
 const ATOMS = 'a'
 
+const READ_MATCHING_COLLECTION = `\
+local collections_prefix = ARGV[1];
+local rows_prefix = ARGV[2];
+local created_min = tonumber(ARGV[3]);
+local created_max = tonumber(ARGV[4]);
+local when_min = tonumber(ARGV[5]);
+local when_max = tonumber(ARGV[6]);
+
+local function read_collection (id)
+	local rows = {};
+
+	local cursor = "0";
+	while true do
+		-- todo: pass in collection rows prefix
+		local res = redis.call("scan", cursor, "match", rows_prefix .. id .. ":*", "COUNT", 30);
+		cursor = res[1];
+
+		for _, key in ipairs(res[2]) do
+			local __, ___, when, i = string.find(key, "[^:]+:[^:]+:[^:]+:([^:]+):([^:]+)");
+			when = tonumber(when);
+			i = tonumber(i);
+
+			if when >= when_min and when <= when_max
+			then
+				local row = redis.call("get", key);
+				table.insert(rows, {i, row});
+			end
+		end
+
+		if cursor == "0" then
+			break
+		end
+	end
+
+	return rows;
+end
+
+local cursor = "0";
+while true do
+	-- todo: scan in reverse order to, when in doubt, get the latest collection
+	local res = redis.call("scan", cursor, "match", collections_prefix .. "*", "COUNT", 100);
+	cursor = res[1];
+
+	for i, key in ipairs(res[2]) do
+		local _, __, created = string.find(key, "[^:]+:[^:]+:[^:]+:[^:]+:([^:]+)");
+		created = tonumber(created);
+
+		if created >= created_min and created <= created_max
+		then
+			local col = redis.call("get", key);
+			local _, __, id, when, duration = string.find(col, "([^:]+):([^:]+):([^:]+)");
+			when = tonumber(when);
+			duration = tonumber(duration);
+
+			if when <= when_min and (when + duration) >= when_max
+			then
+				return read_collection(id);
+			end
+		end
+	end
+
+	if cursor == "0" then
+		break
+	end
+end
+
+return {};
+`
+
 const createStore = (db) => {
+	// todo: stop mutating `db`
+	if (!db.readMatchingCollection) {
+		db.defineCommand('readMatchingCollection', {
+			numberOfKeys: 0,
+			lua: READ_MATCHING_COLLECTION,
+		})
+	}
+
 	const init = async () => {
 		debug('init')
 	}
@@ -46,60 +123,30 @@ const createStore = (db) => {
 		[Symbol.asyncIterator]: () => scanner(pattern)
 	})
 
-	const findMatchingCollection = async (args) => {
+	const readCollection = async (args) => {
+		debug('readCollection', args)
 		const {
 			method, inputHash,
 			whenMin, whenMax
 		} = args
 		const createdMin = Math.floor(args.createdMin / 1000)
 		const createdMax = Math.ceil(args.createdMax / 1000)
+		const rowToVal = args.rowToVal || (row => JSON.parse(row.data))
 
-		// todo: scan in reverse order to, when in doubt, get the latest collection
 		const prefix = commonPrefix([
 			[VERSION, COLLECTIONS, method, inputHash, createdMin].join(':'),
 			[VERSION, COLLECTIONS, method, inputHash, createdMax].join(':')
 		])
-		for await (const keys of scan(prefix + '*')) {
-			for (let key of keys) {
-				const created = parseInt(key.split(':')[4])
-				if (Number.isNaN(created) || created < createdMin || created > createdMax) continue
+		const rowsPrefix = `${VERSION}:${COLLECTIONS_ROWS}:`
+		const rows = await db.readMatchingCollection(
+			prefix, rowsPrefix,
+			createdMin, createdMax,
+			whenMin, whenMax,
+		)
 
-				const {when, duration, id} = JSON.parse(await read(key))
-				if (when <= whenMin && (when + duration) >= whenMax) return id
-			}
-		}
-		return null
-	}
-
-	const readCollection = async (args) => {
-		debug('readCollection', args)
-		const whenMin = Math.floor(args.whenMin / 1000)
-		const whenMax = Math.ceil(args.whenMax / 1000)
-		const rowToVal = args.rowToVal || (row => JSON.parse(row.data))
-
-		const id = await findMatchingCollection(args)
-		if (!id) return []
-
-		const prefix = [VERSION, COLLECTIONS_ROWS, id].join(':') + ':'
-		const rows = []
-		for await (const keys of scan(prefix + '*')) {
-			for (let key of keys) {
-				const keyParts = key.split(':')
-
-				const when = parseInt(keyParts[3])
-				if (Number.isNaN(when) || when < whenMin || when > whenMax) continue
-
-				const data = await read(key)
-				rows.push([
-					parseInt(keyParts[4]), // i
-					rowToVal({data})
-				])
-			}
-
-		}
 		return rows
 		.sort(([idxA], [idxB]) => idxA - idxB)
-		.map(([idx, val]) => val)
+		.map(([idx, data]) => rowToVal({data}))
 	}
 
 	const writeCollection = async (args) => {
@@ -114,13 +161,13 @@ const createStore = (db) => {
 		const collectionId = randomBytes(10).toString('hex')
 		await write([
 			VERSION, COLLECTIONS, method, inputHash, created
-		].join(':'), JSON.stringify({
-			id: collectionId,
+		].join(':'), [
+			collectionId,
 			when, duration
-		}), cachePeriod)
+		].join(':'), cachePeriod)
 
 		await Promise.all(rows.map(async (row, i) => {
-			const t = Math.round(new Date(row.when) / 1000)
+			const t = +new Date(row.when)
 			if (Number.isNaN(t)) throw new Error(`rows[${i}].when must be an ISO 8601 string`)
 			const key = [VERSION, COLLECTIONS_ROWS, collectionId, t, i].join(':')
 			await write(key, row.data, cachePeriod)
