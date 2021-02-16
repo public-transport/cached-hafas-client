@@ -1,5 +1,6 @@
 'use strict'
 
+const debug = require('debug')('cached-hafas-client')
 const {createHash} = require('crypto')
 const {stringify} = require('querystring')
 const pick = require('lodash/pick')
@@ -35,6 +36,7 @@ const silenceRejections = async (run) => {
 	try {
 		return await run()
 	} catch (err) {
+		debug('caching error', err)
 		if (
 			err instanceof RangeError ||
 			err instanceof ReferenceError ||
