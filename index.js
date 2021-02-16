@@ -88,7 +88,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 				createdMin, createdMax, cachePeriod,
 				rowToVal
 			}))
-			if (values && values.length > 0) {
+			if (values && values.length > 0) { // todo: this is wrong, fix it
 				out.emit('hit', method, ...args, values.length)
 				Object.defineProperty(values, CACHED, {value: true})
 				Object.defineProperty(values, TIME, {value: Date.now() - t0})
