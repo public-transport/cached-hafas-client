@@ -95,16 +95,6 @@ const createStore = (db) => {
 		debug('init')
 	}
 
-	const read = async (key) => {
-		debug('read', key)
-		return await db.get(key)
-	}
-
-	const write = async (key, val, ttl) => {
-		debug('write', key, val.length, ttl)
-		await db.set(key, val, 'PX', ttl)
-	}
-
 	const scanner = (pattern) => {
 		debug('scanner', pattern)
 		let cursor = '0', initial = true
@@ -159,19 +149,24 @@ const createStore = (db) => {
 		const created = Math.round(args.created / 1000)
 
 		const collectionId = randomBytes(10).toString('hex')
-		await write([
-			VERSION, COLLECTIONS, method, inputHash, created
-		].join(':'), [
-			collectionId,
-			when, duration
-		].join(':'), cachePeriod)
 
-		await Promise.all(rows.map(async (row, i) => {
-			const t = +new Date(row.when)
-			if (Number.isNaN(t)) throw new Error(`rows[${i}].when must be an ISO 8601 string`)
-			const key = [VERSION, COLLECTIONS_ROWS, collectionId, t, i].join(':')
-			await write(key, row.data, cachePeriod)
-		}))
+
+		const cmds = [
+			[
+				'set',
+				[VERSION, COLLECTIONS, method, inputHash, created].join(':'),
+				[collectionId, when, duration].join(':'),
+				'PX', cachePeriod,
+			],
+			...rows.map((row, i) => {
+				// todo: fall back to plannedWhen?
+				const t = +new Date(row.when)
+				if (Number.isNaN(t)) throw new Error(`rows[${i}].when must be a number or an ISO 8601 string`)
+				const key = [VERSION, COLLECTIONS_ROWS, collectionId, t, i].join(':')
+				return ['set', key, row.data, 'PX', cachePeriod]
+			}),
+		]
+		await db.multi(cmds).exec()
 	}
 
 	// atomics
@@ -198,7 +193,7 @@ const createStore = (db) => {
 				const created = parseInt(key.split(':')[4])
 				if (Number.isNaN(created) || created < createdMin || created > createdMax) continue
 
-				const val = await read(key)
+				const val = await db.get(key)
 				return deserialize(val)
 			}
 
@@ -217,7 +212,7 @@ const createStore = (db) => {
 		const serialize = args.serialize || JSON.stringify
 
 		const key = [VERSION, ATOMS, method, inputHash, created].join(':')
-		await write(key, serialize(val), cachePeriod)
+		await db.set(key, serialize(val), 'PX', cachePeriod)
 	}
 
 	return {
