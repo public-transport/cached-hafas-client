@@ -16,6 +16,7 @@ store name | built on top of | notes
 -----------|-----------------|------
 [`cached-hafas-client/stores/redis`](stores/redis.js) | [Redis](https://redis.io/) |
 [`cached-hafas-client/stores/sqlite`](stores/sqlite.js) | [SQLite](https://www.sqlite.org/) | TTL not implemented yet
+[`cached-hafas-client/stores/in-memory`](stores/in-memory.js) | in-memory (using [`quick-lru`](https://npmjs.com/package/quick-lru)) |
 
 
 ## Installation
@@ -45,7 +46,7 @@ const withCache = require('cached-hafas-client')
 const cachedHafas = withCache(hafas, store)
 ```
 
-Because `cached-hafas-client` caches HAFAS responses by "request signature", it is build on the assumption that, aside from the ever-changing transit data underneath, HAFAS works deterministically.
+Because `cached-hafas-client` caches HAFAS responses by "request signature", it is build on the assumption that, HAFAS works deterministically, aside from the ever-changing transit data underneath. Because there are no guarantees for this, use `cached-hafas-client` with a grain of salt.
 
 This is why **you must send deterministic queries**; for example, you *must* pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/5/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/5/docs/arrivals.md) for it to know which "time range" the data returned by HAFAS is for.
 
