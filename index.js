@@ -186,6 +186,8 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		)
 	}
 
+	// todo: add journeysFromTrip() (DB profile only so far)
+
 	const trip = (id, lineName, opt = {}) => {
 		const useCache = opt[CACHED] !== false
 		return atomWithCache('trip', useCache, [
