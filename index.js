@@ -250,10 +250,15 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 	}
 
 	const tripsByName = (lineNameOrFahrtNr, opt = {}) => {
-		let cacheOpt = opt
+		let cacheOpt = Object.assign({}, opt)
 		if ('when' in cacheOpt) {
-			cacheOpt = Object.assign({}, opt)
 			cacheOpt.when = round1000(+new Date(cacheOpt.when))
+		}
+		if ('fromWhen' in cacheOpt) {
+			cacheOpt.fromWhen = round1000(+new Date(cacheOpt.fromWhen))
+		}
+		if ('fromWhen' in cacheOpt) {
+			cacheOpt.untilWhen = round1000(+new Date(cacheOpt.untilWhen))
 		}
 
 		const useCache = opt[CACHED] !== false
