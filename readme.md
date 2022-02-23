@@ -48,7 +48,7 @@ const cachedHafas = withCache(hafas, store)
 
 Because `cached-hafas-client` caches HAFAS responses by "request signature", it is build on the assumption that, HAFAS works deterministically, aside from the ever-changing transit data underneath. Because there are no guarantees for this, use `cached-hafas-client` with a grain of salt.
 
-This is why **you must send deterministic queries**; for example, you *must* pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/5/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/5/docs/arrivals.md) for it to know which "time range" the data returned by HAFAS is for.
+This is why **you must send deterministic queries**; for example, you *must* pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/5/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/5/docs/arrivals.md), so that `cached-hafas-client` knows the time frame that the list of results returned by HAFAS is for.
 
 ```js
 const wollinerStr = '900000007105'
@@ -58,7 +58,7 @@ const when = new Date(Date.now() + 60 * 60 * 1000)
 // will fetch fresh data from HAFAS
 await cachedHafas.departures(wollinerStr, {duration: 10, when})
 
-// within the "time range" of the departures() call above,
+// within the time frame of the departures() call above,
 // so it will use the cached data
 await cachedHafas.departures(wollinerStr, {
 	duration: 3, when: new Date(+when + 3 * 60 * 1000)
