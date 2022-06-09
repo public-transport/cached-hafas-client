@@ -1,0 +1,33 @@
+name: test
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['10', '12', '14', '16', '18']
+        redis-version: ['6']
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+    - name: setup Node v${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: setup Redis v${{ matrix.redis-version }}
+      uses: supercharge/redis-github-action@1.4.0
+      with:
+        redis-version: ${{ matrix.redis-version }}
+    - run: npm install
+
+    - run: npm run lint
+    - run: npm test
