@@ -1,6 +1,7 @@
 'use strict'
 
 const debug = require('debug')('cached-hafas-client')
+const {strictEqual} = require('assert')
 const {createHash} = require('crypto')
 const {stringify} = require('querystring')
 const pick = require('lodash/pick')
@@ -45,6 +46,22 @@ const silenceRejections = async (run) => {
 	}
 }
 
+// todo: what about the past?
+const dynamicCachePeriod = (multiplier, base, fallback, when) => {
+	const secs = (new Date(when) - Date.now()) / 1000
+	if (!Number.isNaN(secs) && secs > 0) {
+		return Math.round(
+			multiplier *
+			Math.max(base, Math.pow(secs, 1/2))
+			* SECOND
+		)
+	}
+	return multiplier * fallback * SECOND
+}
+strictEqual(dynamicCachePeriod(1.5, 3, 10, new Date(Date.now() + 30 * SECOND).toISOString()), 8216, '30s from now')
+strictEqual(dynamicCachePeriod(1.5, 3, 10, new Date(Date.now() + 30 * MINUTE).toISOString()), 63640, '30m from now')
+strictEqual(dynamicCachePeriod(1.5, 3, 10, new Date(Date.now() + 30 * HOUR).toISOString()), 492950, '30h from now')
+
 const createCachedHafas = (hafas, storage, opt = {}) => {
 	if (!isObj(storage)) {
 		throw new TypeError('storage must be an object')
@@ -54,19 +71,38 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 			throw new TypeError(`invalid storage: storage.${method} must be a function`)
 		}
 	}
+
 	const cachePeriods = {
 		// results contain (or calculation depends on) prognosed delays
-		departures: 30 * SECOND, arrivals: 30 * SECOND,
-		journeys: 30 * SECOND, refreshJourney: MINUTE,
-		trip: 30 * SECOND,
-		reachableFrom: 30 * SECOND,
-		// results contain prognosed positions
-		radar: 10 * SECOND,
+		// at least 10s, 20s fallback, 85s for query 30m from now
+		departures: (_, opt = {}) => dynamicCachePeriod(2, 5, 10, opt.when),
+		arrivals: (_, opt = {}) => dynamicCachePeriod(2, 5, 10, opt.when),
+		trip: (_, opt = {}) => dynamicCachePeriod(2, 5, 10, opt.when),
+
+		// results contain prognosed positions or highly dynamic results
+		journeys: (_, __, opt = {}) => {
+			const when = 'departure' in opt ? opt.departure : opt.arrival
+			dynamicCachePeriod(3, 4, 5, when)
+		},
+		refreshJourney: (_, opt = {}) => dynamicCachePeriod(3, 4, 5, opt.when),
+		radar: (_, opt = {}) => dynamicCachePeriod(1, 5, 10, opt.when),
+
 		// rather static data
+		reachableFrom: (_, opt = {}) => dynamicCachePeriod(5, 12, 60, opt.when),
 		locations: HOUR,
 		stop: HOUR,
 		nearby: HOUR,
+
 		...(opt.cachePeriods || {}),
+	}
+	for (const [key, val] of Object.entries(cachePeriods)) {
+		// todo [breaking]: always expect a function
+		if ('function' === typeof val) continue
+		if ('number' === typeof val) {
+			cachePeriods[key] = () => val
+			continue
+		}
+		throw new TypeError(`opt.cachePeriods.${key} must be a number or a function returning a number`)
 	}
 
 	// initialize storage
@@ -76,7 +112,9 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 	const collectionWithCache = async (method, useCache, cacheKeyData, whenMin, duration, args, rowToVal, valToRow) => {
 		const t0 = Date.now()
 		const inputHash = hash(JSON.stringify(cacheKeyData))
-		const cachePeriod = cachePeriods[method] || 10 * SECOND
+		const cachePeriod = method in cachePeriods
+			? cachePeriods[method](...args)
+			: 10 * SECOND
 		await pStorageInit
 
 		if (useCache) {
@@ -112,7 +150,9 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 	const atomWithCache = async (methodName, useCache, cacheKeyData, args) => {
 		const t0 = Date.now()
 		const inputHash = hash(JSON.stringify(cacheKeyData))
-		const cachePeriod = cachePeriods[methodName] || 10 * SECOND
+		const cachePeriod = methodName in cachePeriods
+			? cachePeriods[methodName](...args)
+			: 10 * SECOND
 		await pStorageInit
 
 		if (useCache) {

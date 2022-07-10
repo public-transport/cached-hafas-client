@@ -67,11 +67,27 @@ await cachedHafas.departures(wollinerStr, {
 
 *Note:* `cached-hafas-client` is only compatible with [`hafas-client@5`](https://github.com/public-transport/hafas-client/tree/5).
 
-## Using a custom TTL
+## with a custom cache TTL
+
+By default, `cached-hafas-client` uses TTLs that try to strike a balance between up-to-date-ness and a cache hit ratio: The caching duration depends on how far in the future you query for.
+
+You can pass custom cache TTLs per `hafas-client` method, either as static values or as a function returning the cache TTL based on the arguments.
 
 ```js
-const cachePeriod = 5 * 60 * 1000 // 5 minutes
-const cachedHafas = withCache(hafas, store, cachePeriod)
+const SECOND = 1000
+const MINUTE = 60 * SECOND
+
+const cachePeriods = {
+	// cache all cachedHafas.stop(…) calls for 10m
+	stop: 10 * MINUTE,
+	// cache cachedHafas.trip(tripId, opt) based on sqrt(opt.when - now)
+	trip: (_, opt = {}) => {
+		const diffSecs = (new Date(opt.when) - Date.now()) / SECOND
+		if (Number.isNaN(diffSecs)) return 10 * SECOND // fallback
+		return Math.round(Math.pow(diffSecs, 1/2) * SECOND)
+	},
+}
+const cachedHafas = withCache(hafas, store, {cachePeriods})
 ```
 
 ## Counting cache hits & misses
