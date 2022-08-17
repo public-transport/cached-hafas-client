@@ -82,7 +82,7 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		// results contain prognosed positions or highly dynamic results
 		journeys: (_, __, opt = {}) => {
 			const when = 'departure' in opt ? opt.departure : opt.arrival
-			dynamicCachePeriod(3, 4, 5, when)
+			return dynamicCachePeriod(3, 4, 5, when)
 		},
 		refreshJourney: (_, opt = {}) => dynamicCachePeriod(3, 4, 5, opt.when),
 		radar: (_, opt = {}) => dynamicCachePeriod(1, 5, 10, opt.when),
