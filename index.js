@@ -354,8 +354,8 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 	}
 
 	const out = new EventEmitter()
-	out.CACHED = CACHED
-	out.TIME = TIME
+	Object.defineProperty(out, 'CACHED', {value: CACHED})
+	Object.defineProperty(out, 'TIME', {value: TIME})
 	out.profile = hafas.profile
 
 	out.departures = departures
