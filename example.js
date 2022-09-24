@@ -9,6 +9,8 @@ const createRedisStore = require('./stores/redis')
 const db = new Redis()
 const store = createRedisStore(db)
 
+const MINUTE = 60 * 1000
+
 // using SQLite
 // const sqlite3 = require('sqlite3')
 // const createSqliteStore = require('./stores/sqlite')
@@ -17,7 +19,7 @@ const store = createRedisStore(db)
 
 const wollinerStr = '900000007105'
 const husemannstr = '900000110511'
-const when = new Date(Date.now() + 60 * 60 * 1000)
+const when = new Date(Date.now() + 60 * MINUTE)
 
 ;(async () => {
 
@@ -31,7 +33,7 @@ const when = new Date(Date.now() + 60 * 60 * 1000)
 		duration: 10, when
 	})
 	const deps = await cachedHafas.departures(wollinerStr, {
-		duration: 3, when: new Date(+when + 3 * 60 * 1000)
+		duration: 3, when: new Date(+when + 3 * MINUTE)
 	})
 	console.log(deps[0])
 
