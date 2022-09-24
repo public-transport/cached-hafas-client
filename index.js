@@ -115,6 +115,15 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		const cachePeriod = method in cachePeriods
 			? cachePeriods[method](...args)
 			: 10 * SECOND
+		if (cachePeriod === null) {
+			debug('collectionWithCache', {
+				method, useCache, whenMin, duration, args,
+				inputHash, cachePeriod,
+			}, 'not using cache because cachePeriods[method]() returned null')
+			useCache = false
+		} else if (!Number.isInteger(cachePeriod)) {
+			throw new Error(`opt.cachePeriods.${method}() must return an integer or null`)
+		}
 		await pStorageInit
 
 		if (useCache) {
@@ -153,6 +162,15 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 		const cachePeriod = methodName in cachePeriods
 			? cachePeriods[methodName](...args)
 			: 10 * SECOND
+		if (cachePeriod === null) {
+			debug('atomWithCache', {
+				methodName, useCache, args,
+				inputHash, cachePeriod,
+			}, 'not using cache because cachePeriods[method]() returned null')
+			useCache = false
+		} else if (!Number.isInteger(cachePeriod)) {
+			throw new Error(`opt.cachePeriods.${methodName}() must return an integer or null`)
+		}
 		await pStorageInit
 
 		if (useCache) {

@@ -22,7 +22,8 @@ const createInMemDb = async () => ({
 	teardown: async () => {},
 })
 
-const minute = 60 * 1000
+const second = 1000
+const minute = 60 * second
 const hour = 60 * minute
 
 const wollinerStr = '900000007105'
@@ -33,6 +34,13 @@ const torfstr17 = {
 	latitude: 52.541797,
 	longitude: 13.350042
 }
+
+const journeysMock = async (from, to, opt = {}) => ({
+	earlierRef: 'foo',
+	laterRef: 'bar',
+	journeys: [],
+	realtimeDataFrom: null,
+})
 
 const rejects = async (t, fn) => {
 	try {
@@ -47,7 +55,7 @@ const rejects = async (t, fn) => {
 const test = tapePromise(tape)
 
 const runTests = (storeName, createDb, createStore) => {
-	const withMocksAndCache = async (hafas, mocks, ttl = hour) => {
+	const withMocksAndCache = async (hafas, mocks, ttl = hour, cachePeriods = {}) => {
 		const mocked = Object.assign(Object.create(hafas), mocks)
 		const {db, teardown} = await createDb()
 		const store = createStore(db)
@@ -58,6 +66,7 @@ const runTests = (storeName, createDb, createStore) => {
 				radar: ttl,
 				locations: ttl, stop: ttl, nearby: ttl,
 				reachableFrom: ttl,
+				...cachePeriods,
 			}
 		})
 		return {hafas: cachedMocked, teardown}
@@ -241,6 +250,60 @@ const runTests = (storeName, createDb, createStore) => {
 		t.equal(spy.callCount, 3)
 		await h.journeys(wollinerStr, husemannstr, {departure: when, stopovers: true})
 		t.equal(spy.callCount, 4)
+
+		await teardown()
+		t.end()
+	})
+
+	test(storeName + ' journeys: caching works with default caching period', async (t) => {
+		const journeysSpy = createSpy(journeysMock)
+		const mockedHafas = Object.create(hafas)
+		mockedHafas.journeys = journeysSpy
+
+		const {db, teardown} = await createDb()
+		const store = createStore(db)
+		const h = createCachedHafas(mockedHafas, store)
+		const opt = {departure: when}
+
+		await h.journeys(wollinerStr, husemannstr, opt)
+		t.equal(journeysSpy.callCount, 1)
+		await h.journeys(wollinerStr, husemannstr, {...opt})
+		t.equal(journeysSpy.callCount, 1) // caching worked!
+
+		await teardown()
+		t.end()
+	})
+
+	test(storeName + ' journeys: caching works with custom caching period fn', async (t) => {
+		const journeysSpy = createSpy(journeysMock)
+		const cachePeriodSpy = createSpy(() => 10 * second)
+		const defaultTtl = 0
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {
+			journeys: journeysSpy,
+		}, defaultTtl, {
+			journeys: cachePeriodSpy,
+		})
+		const opt = {departure: when}
+
+		await h.journeys(wollinerStr, husemannstr, opt)
+		t.equal(journeysSpy.callCount, 1)
+		t.equal(cachePeriodSpy.callCount, 1)
+		await h.journeys(wollinerStr, husemannstr, {...opt})
+		t.equal(journeysSpy.callCount, 1) // caching worked!
+		t.equal(cachePeriodSpy.callCount, 2) // caching period fn called again
+
+		{
+			const defaultTtl = 0
+			const cachePeriod = () => null
+			const {hafas: h, teardown} = await withMocksAndCache(hafas, {
+				journeys: journeysSpy,
+			}, defaultTtl, {
+				journeys: cachePeriod,
+			})
+
+			await h.journeys(wollinerStr, husemannstr, {...opt})
+			t.equal(journeysSpy.callCount, 2) // didn't use the cache!
+		}
 
 		await teardown()
 		t.end()
