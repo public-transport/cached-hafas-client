@@ -1,7 +1,7 @@
 {
 	"name": "cached-hafas-client",
 	"description": "Pass in a HAFAS client, cache data from it.",
-	"version": "4.1.4",
+	"version": "5.0.0",
 	"main": "index.js",
 	"type": "module",
 	"files": [
@@ -42,10 +42,10 @@
 		"vbb-hafas": "^7.0.1"
 	},
 	"cached-hafas-client": {
-		"dataVersion": 3
+		"dataVersion": 4
 	},
 	"peerDependencies": {
-		"hafas-client": "5.0 - 5.26"
+		"hafas-client": ">=6.0 <=6.0"
 	},
 	"scripts": {
 		"lint": "eslint .",
