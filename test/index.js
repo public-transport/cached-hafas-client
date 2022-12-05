@@ -1,20 +1,19 @@
-'use strict'
+import tape from 'tape'
+import _tapePromise from 'tape-promise'
+const {default: tapePromise} = _tapePromise
+import pRetry from 'p-retry'
 
-const tape = require('tape')
-const tapePromise = require('tape-promise').default
-const pRetry = require('p-retry')
+import {createSqliteStore} from '../stores/sqlite.js'
+import {createRedisStore} from '../stores/redis.js'
+import {createInMemoryStore} from '../stores/in-memory.js'
+import {createCachedHafasClient as createCachedHafas} from '../index.js'
 
-const createSqliteStore = require('../stores/sqlite')
-const createRedisStore = require('../stores/redis')
-const createInMemStore = require('../stores/in-memory')
-const createCachedHafas = require('..')
-
-const {
+import {
 	hafas,
 	when,
 	createSpy, delay,
 	createSqliteDb, createRedisDb
-} = require('./util')
+} from './util.js'
 
 // fake the Redis/SQLite helper API
 const createInMemDb = async () => ({
@@ -792,7 +791,7 @@ test('silences cache failures', async (t) => {
 
 runTests('sqlite', createSqliteDb, createSqliteStore)
 runTests('redis', createRedisDb, createRedisStore)
-runTests('in-memory', createInMemDb, createInMemStore)
+runTests('in-memory', createInMemDb, createInMemoryStore)
 test.onFinish(() => {
 	process.exit()
 })

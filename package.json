@@ -3,6 +3,7 @@
 	"description": "Pass in a HAFAS client, cache data from it.",
 	"version": "4.1.4",
 	"main": "index.js",
+	"type": "module",
 	"files": [
 		"index.js",
 		"stores",
@@ -27,13 +28,13 @@
 		"debug": "^4.0.0",
 		"ioredis": "^5.2.4",
 		"lodash": "^4.17.10",
-		"quick-lru": "^5.1.1",
+		"quick-lru": "^6.1.1",
 		"shallow-clone": "^3.0.1"
 	},
 	"devDependencies": {
 		"eslint": "^8.29.0",
 		"luxon": "^3.1.1",
-		"p-retry": "^4.0.0",
+		"p-retry": "^5.1.2",
 		"sqlite3": "^5.0.0",
 		"tap-spec": "^5.0.0",
 		"tape": "^5.0.1",

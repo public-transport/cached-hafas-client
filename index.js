@@ -1,12 +1,12 @@
-'use strict'
+import createDebug from 'debug'
+import {strictEqual} from 'assert'
+import {createHash} from 'crypto'
+import {stringify} from 'querystring'
+import pick from 'lodash/pick.js'
+import omit from 'lodash/omit.js'
+import {EventEmitter} from 'events'
 
-const debug = require('debug')('cached-hafas-client')
-const {strictEqual} = require('assert')
-const {createHash} = require('crypto')
-const {stringify} = require('querystring')
-const pick = require('lodash/pick')
-const omit = require('lodash/omit')
-const {EventEmitter} = require('events')
+const debug = createDebug('cached-hafas-client')
 
 const SECOND = 1000
 const MINUTE = 60 * SECOND
@@ -62,7 +62,7 @@ strictEqual(dynamicCachePeriod(1.5, 3, 10, new Date(Date.now() + 30 * SECOND).to
 strictEqual(dynamicCachePeriod(1.5, 3, 10, new Date(Date.now() + 30 * MINUTE).toISOString()), 63640, '30m from now')
 strictEqual(dynamicCachePeriod(1.5, 3, 10, new Date(Date.now() + 30 * HOUR).toISOString()), 492950, '30h from now')
 
-const createCachedHafas = (hafas, storage, opt = {}) => {
+const createCachedHafasClient = (hafas, storage, opt = {}) => {
 	if (!isObj(storage)) {
 		throw new TypeError('storage must be an object')
 	}
@@ -375,4 +375,6 @@ const createCachedHafas = (hafas, storage, opt = {}) => {
 	return out
 }
 
-module.exports = createCachedHafas
+export {
+	createCachedHafasClient,
+}

@@ -1,10 +1,15 @@
-'use strict'
+// todo: use import assertions once they're supported by Node.js & ESLint
+// https://github.com/tc39/proposal-import-assertions
+import {createRequire} from 'module'
+const require = createRequire(import.meta.url)
 
-const {ok} = require('assert')
-const {randomBytes} = require('crypto')
-const debug = require('debug')('cached-hafas-client:redis')
-const commonPrefix = require('common-prefix')
+import {ok} from 'assert'
+import {randomBytes} from 'crypto'
+import createDebug from 'debug'
+import commonPrefix from 'common-prefix'
 const pkg = require('../package.json')
+
+const debug = createDebug('cached-hafas-client:redis')
 
 const VERSION = pkg['cached-hafas-client'].dataVersion + ''
 ok(VERSION)
@@ -110,7 +115,7 @@ while true do
 end
 `
 
-const createStore = (db) => {
+const createRedisStore = (db) => {
 	// todo: stop mutating `db`
 	if (!db.readMatchingCollection) {
 		db.defineCommand('readMatchingCollection', {
@@ -250,4 +255,6 @@ const createStore = (db) => {
 	}
 }
 
-module.exports = createStore
+export {
+	createRedisStore,
+}

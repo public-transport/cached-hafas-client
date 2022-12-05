@@ -1,14 +1,20 @@
-'use strict'
+// todo: use import assertions once they're supported by Node.js & ESLint
+// https://github.com/tc39/proposal-import-assertions
+import {createRequire} from 'module'
+const require = createRequire(import.meta.url)
 
-const debug = require('debug')('cached-hafas-client:in-memory')
-const LRUCache = require('quick-lru')
-const commonPrefix = require('common-prefix')
-const clone = require('shallow-clone')
+import createDebug from 'debug'
+import LRUCache from 'quick-lru'
+import commonPrefix from 'common-prefix'
+import clone from 'shallow-clone'
+const pkg = require('../package.json')
+
+const debug = createDebug('cached-hafas-client:in-memory')
 
 const COLLECTIONS = 'c'
 const ATOMS = 'a'
 
-const createStore = (opt = {}) => {
+const createInMemoryStore = (opt = {}) => {
 	const {
 		maxSize,
 	} = {
@@ -108,4 +114,6 @@ const createStore = (opt = {}) => {
 	}
 }
 
-module.exports = createStore
+export {
+	createInMemoryStore,
+}

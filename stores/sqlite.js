@@ -1,10 +1,15 @@
-'use strict'
+// todo: use import assertions once they're supported by Node.js & ESLint
+// https://github.com/tc39/proposal-import-assertions
+import {createRequire} from 'module'
+const require = createRequire(import.meta.url)
 
-const {ok} = require('assert')
-const {promisify} = require('util')
-const {randomBytes} = require('crypto')
-const debug = require('debug')('cached-hafas-client:sqlite')
+import {ok} from 'assert'
+import {promisify} from 'util'
+import {randomBytes} from 'crypto'
+import createDebug from 'debug'
 const pkg = require('../package.json')
+
+const debug = createDebug('cached-hafas-client:sqlite')
 
 const V = pkg['cached-hafas-client'].dataVersion + ''
 ok(V)
@@ -113,7 +118,7 @@ INSERT OR REPLACE INTO atoms_${V}
 VALUES ($id, $created, $method, $inputHash, $data);
 `
 
-const createStore = (db) => {
+const createSqliteStore = (db) => {
 	const dbExec = promisify(db.exec.bind(db))
 	const dbAll = promisify(db.all.bind(db))
 	const dbRun = promisify(db.run.bind(db))
@@ -229,4 +234,6 @@ const createStore = (db) => {
 	}
 }
 
-module.exports = createStore
+export {
+	createSqliteStore,
+}

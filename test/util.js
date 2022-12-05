@@ -1,11 +1,10 @@
-'use strict'
-
 const DEBUG = process.env.NODE_DEBUG === 'cached-hafas-client'
 
-const createHafas = require('vbb-hafas')
-const {DateTime} = require('luxon')
-const sqlite3 = DEBUG ? require('sqlite3').verbose() : require('sqlite3')
-const Redis = require('ioredis')
+import createHafas from 'vbb-hafas'
+import {DateTime} from 'luxon'
+import Redis from 'ioredis'
+import _sqlite3 from 'sqlite3'
+const sqlite3 = DEBUG ? _sqlite3.verbose() : _sqlite3
 
 const hafas = createHafas('cached-hafas-client test')
 
@@ -51,7 +50,7 @@ const createRedisDb = () => {
 	return Promise.resolve({db, teardown})
 }
 
-module.exports = {
+export {
 	hafas,
 	when,
 	createSpy,
