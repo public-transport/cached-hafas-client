@@ -353,26 +353,26 @@ const runTests = (storeName, createDb, createStore) => {
 		t.end()
 	})
 
-	const pTrip = hafas.journeys(wollinerStr, husemannstr, {
+	const pTripId = hafas.journeys(wollinerStr, husemannstr, {
 		departure: when,
 		results: 1,
 		stopovers: false
 	})
 	.then(({journeys}) => {
 		const leg = journeys[0].legs.find(leg => leg.mode !== 'walking')
-		return {id: leg.tripId, lineName: leg.line && leg.line.name}
+		return leg.tripId
 	})
 
 	test(storeName + ' trip: same arguments -> reads from cache', async (t) => {
 		const spy = createSpy(hafas.trip)
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {trip: spy})
 
-		const {id, lineName} = await pTrip
+		const id = await pTripId
 		const opt = {when, stopovers: true}
 
-		const r1 = await h.trip(id, lineName, opt)
+		const r1 = await h.trip(id, opt)
 		t.equal(spy.callCount, 1)
-		const r2 = await h.trip(id, lineName, Object.assign({}, opt))
+		const r2 = await h.trip(id, Object.assign({}, opt))
 		t.equal(spy.callCount, 1)
 
 		t.deepEqual(r1, r2)
@@ -384,18 +384,16 @@ const runTests = (storeName, createDb, createStore) => {
 		const spy = createSpy(hafas.trip)
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {trip: spy})
 
-		const {id, lineName} = await pTrip
+		const id = await pTripId
 		const opt = {when, stopovers: true}
 
-		await h.trip(id, lineName, opt)
+		await h.trip(id, opt)
 		t.equal(spy.callCount, 1)
 
-		await h.trip(id + 'a', lineName, opt) // different `id`
+		await h.trip(id + 'a', opt) // different `id`
 		t.equal(spy.callCount, 2)
-		await h.trip(id, lineName + 'a', opt) // different `lineName`
+		await h.trip(id, {when, stopovers: false}) // different `opt`
 		t.equal(spy.callCount, 3)
-		await h.trip(id, lineName, {when, stopovers: false}) // different `opt`
-		t.equal(spy.callCount, 4)
 		await teardown()
 		t.end()
 	})

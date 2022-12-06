@@ -246,13 +246,12 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 
 	// todo: add journeysFromTrip() (DB profile only so far)
 
-	const trip = (id, lineName, opt = {}) => {
+	const trip = (id, opt = {}) => {
 		const useCache = opt[CACHED] !== false
 		return atomWithCache('trip', useCache, [
 			id,
-			lineName,
 			omit(opt, ['when'])
-		], [id, lineName, opt])
+		], [id, opt])
 	}
 
 	const locations = (query, opt = {}) => {
