@@ -3,7 +3,6 @@
 **Pass in a [HAFAS client](https://github.com/public-transport/hafas-client/tree/6), cache data from it.**
 
 [![npm version](https://img.shields.io/npm/v/cached-hafas-client.svg)](https://www.npmjs.com/package/cached-hafas-client)
-[![build status](https://api.travis-ci.org/public-transport/cached-hafas-client.svg?branch=master)](https://travis-ci.org/public-transport/cached-hafas-client)
 ![ISC-licensed](https://img.shields.io/github/license/public-transport/cached-hafas-client.svg)
 [![support me via GitHub Sponsors](https://img.shields.io/badge/support%20me-donate-fa7664.svg)](https://github.com/sponsors/derhuerst)
 [![chat with me on Twitter](https://img.shields.io/badge/chat%20with%20me-on%20Twitter-1da1f2.svg)](https://twitter.com/derhuerst)
@@ -14,9 +13,9 @@
 
 store name | built on top of | notes
 -----------|-----------------|------
-[`cached-hafas-client/stores/redis`](stores/redis.js) | [Redis](https://redis.io/) |
-[`cached-hafas-client/stores/sqlite`](stores/sqlite.js) | [SQLite](https://www.sqlite.org/) | TTL not implemented yet
-[`cached-hafas-client/stores/in-memory`](stores/in-memory.js) | in-memory (using [`quick-lru`](https://npmjs.com/package/quick-lru)) |
+[`cached-hafas-client/stores/redis.js`](stores/redis.js) | [Redis](https://redis.io/) |
+[`cached-hafas-client/stores/sqlite.js`](stores/sqlite.js) | [SQLite](https://www.sqlite.org/) | TTL not implemented yet
+[`cached-hafas-client/stores/in-memory.js`](stores/in-memory.js) | in-memory (using [`quick-lru`](https://npmjs.com/package/quick-lru)) |
 
 
 ## Installation
