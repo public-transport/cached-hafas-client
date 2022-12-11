@@ -25,10 +25,11 @@ const second = 1000
 const minute = 60 * second
 const hour = 60 * minute
 
-const wollinerStr = '900000007105'
-const husemannstr = '900000110511'
+const wollinerStr = '900007105'
+const husemannstr = '900110511'
 const torfstr17 = {
 	type: 'location',
+	id: '770006698',
 	address: '13353 Berlin-Wedding, Torfstr. 17',
 	latitude: 52.541797,
 	longitude: 13.350042
@@ -80,7 +81,10 @@ const runTests = (storeName, createDb, createStore) => {
 		const r2 = await h.departures(wollinerStr, {when, duration: 10})
 		t.equal(spy.callCount, 1)
 
-		t.deepEqual(r1, r2)
+		t.deepEqual({
+			...r1,
+			realtimeDataUpdatedAt: null,
+		}, r2)
 		await teardown()
 		t.end()
 	})
@@ -89,7 +93,9 @@ const runTests = (storeName, createDb, createStore) => {
 		const spy = createSpy(hafas.departures)
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
 
-		const allDeps = await h.departures(wollinerStr, {when, duration: 10})
+		const {
+			departures: allDeps,
+		} = await h.departures(wollinerStr, {when, duration: 10})
 		t.equal(spy.callCount, 1)
 
 		const when2 = +new Date(+when + 3 * minute)
@@ -98,7 +104,9 @@ const runTests = (storeName, createDb, createStore) => {
 			return w >= when2 && w <= (3 * minute + when2)
 		})
 
-		const actualDeps = await h.departures(wollinerStr, {
+		const {
+			departures: actualDeps,
+		} = await h.departures(wollinerStr, {
 			when: when2,
 			duration: 3
 		})
@@ -109,11 +117,13 @@ const runTests = (storeName, createDb, createStore) => {
 	})
 
 	test(storeName + ' departures: compares dep.when properly', async (t) => {
-		const spy = createSpy(async () => [
+		const spy = createSpy(async () => ({
+			departures: [
 				{when: '2020-11-11T11:00+01:00'},
 				{when: '2020-11-11T12:11+02:00'},
 				{when: '2020-11-11T11:22+01:00'},
-			])
+			],
+		}))
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
 
 		const r1 = await h.departures(wollinerStr, {
@@ -133,11 +143,13 @@ const runTests = (storeName, createDb, createStore) => {
 	})
 
 	test(storeName + ' departures: compares opt.when properly', async (t) => {
-		const spy = createSpy(async () => [
+		const spy = createSpy(async () => ({
+			departures: [
 				{when: '2020-11-11T11:00+01:00'},
 				{when: '2020-11-11T12:11+02:00'},
 				{when: '2020-11-11T11:22+01:00'},
-			])
+			],
+		}))
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
 
 		await h.departures(wollinerStr, {
@@ -181,7 +193,10 @@ const runTests = (storeName, createDb, createStore) => {
 		const r2 = await h.arrivals(wollinerStr, {when, duration: 10})
 		t.equal(spy.callCount, 1)
 
-		t.deepEqual(r1, r2)
+		t.deepEqual({
+			...r1,
+			realtimeDataUpdatedAt: null,
+		}, r2)
 		await teardown()
 		t.end()
 	})
@@ -437,7 +452,7 @@ const runTests = (storeName, createDb, createStore) => {
 		const spy = createSpy(hafas.stop)
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {stop: spy})
 
-		const id = '900000068201'
+		const id = '900068201'
 		const opt = {linesOfStops: true}
 
 		const r1 = await h.stop(id, opt)
@@ -454,13 +469,13 @@ const runTests = (storeName, createDb, createStore) => {
 		const spy = createSpy(hafas.stop)
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {stop: spy})
 
-		const id = '900000068201'
+		const id = '900068201'
 		const opt = {linesOfStops: true}
 
 		await h.stop(id, opt)
 		t.equal(spy.callCount, 1)
 
-		await h.stop('900000017101', opt) // different `id`
+		await h.stop('900017101', opt) // different `id`
 		t.equal(spy.callCount, 2)
 		await h.stop(id, {linesOfStops: true, language: 'en'}) // different `opt`
 		t.equal(spy.callCount, 3)
@@ -594,13 +609,13 @@ const runTests = (storeName, createDb, createStore) => {
 		const spy = createSpy(hafas.stop)
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {stop: spy}, ttl)
 
-		await h.stop('900000068201')
+		await h.stop('900068201')
 		t.equal(spy.callCount, 1)
-		await h.stop('900000068201')
+		await h.stop('900068201')
 		t.equal(spy.callCount, 1)
 
 		await delay(2000)
-		await h.stop('900000068201')
+		await h.stop('900068201')
 		t.equal(spy.callCount, 2)
 
 		await teardown()

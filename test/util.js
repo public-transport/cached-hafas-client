@@ -1,12 +1,12 @@
 const DEBUG = process.env.NODE_DEBUG === 'cached-hafas-client'
 
-import createHafas from 'vbb-hafas'
+import {createVbbHafas} from 'vbb-hafas'
 import {DateTime} from 'luxon'
 import Redis from 'ioredis'
 import _sqlite3 from 'sqlite3'
 const sqlite3 = DEBUG ? _sqlite3.verbose() : _sqlite3
 
-const hafas = createHafas('cached-hafas-client test')
+const hafas = createVbbHafas('cached-hafas-client test')
 
 const {timezone, locale} = hafas.profile
 const when = new Date(DateTime.fromMillis(Date.now(), {

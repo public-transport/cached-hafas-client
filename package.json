@@ -39,7 +39,7 @@
 		"tap-spec": "^5.0.0",
 		"tape": "^5.0.1",
 		"tape-promise": "^4.0.0",
-		"vbb-hafas": "^7.0.1"
+		"vbb-hafas": "^8.0.0"
 	},
 	"cached-hafas-client": {
 		"dataVersion": 4

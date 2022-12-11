@@ -1,4 +1,4 @@
-import createHafas from 'vbb-hafas'
+import {createVbbHafas as createHafas} from 'vbb-hafas'
 import {createCachedHafasClient as withCache} from './index.js'
 
 // using Redis
@@ -15,8 +15,8 @@ const MINUTE = 60 * 1000
 // const db = new sqlite3.Database(':memory:')
 // const store = createSqliteStore(db)
 
-const wollinerStr = '900000007105'
-const husemannstr = '900000110511'
+const wollinerStr = '900007105'
+const husemannstr = '900110511'
 const when = new Date(Date.now() + 60 * MINUTE)
 
 const hafas = createHafas('cached-hafas-client example')
@@ -28,7 +28,9 @@ cachedHafas.on('miss', (method, ...args) => console.info('cache miss!', method, 
 await cachedHafas.departures(wollinerStr, {
 	duration: 10, when
 })
-const deps = await cachedHafas.departures(wollinerStr, {
+const {
+	departures: deps,
+} = await cachedHafas.departures(wollinerStr, {
 	duration: 3, when: new Date(+when + 3 * MINUTE)
 })
 console.log(deps[0])

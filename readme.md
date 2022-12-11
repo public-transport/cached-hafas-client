@@ -32,12 +32,12 @@ Let's set up a cached `hafas-client` instance.
 
 ```js
 // create HAFAS client
-const createHafas = require('vbb-hafas')
-const hafas = createHafas('my-awesome-program')
+import {createVbbHafas} from 'vbb-hafas'
+const hafas = createVbbHafas('my-awesome-program')
 
 // create a store backed by Redis
-const Redis = require('ioredis')
-const createRedisStore = require('cached-hafas-client/stores/redis')
+import Redis from 'ioredis'
+import {createRedisStore} from 'cached-hafas-client/stores/redis.js'
 const redis = new Redis()
 const store = createRedisStore(redis)
 
