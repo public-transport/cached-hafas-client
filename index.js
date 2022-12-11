@@ -386,5 +386,7 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 }
 
 export {
+	CACHED,
+	TIME,
 	createCachedHafasClient,
 }
