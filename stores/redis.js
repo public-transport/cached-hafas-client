@@ -160,7 +160,6 @@ const createRedisStore = (db) => {
 		} = args
 		const createdMin = Math.floor(args.createdMin / 1000)
 		const createdMax = Math.ceil(args.createdMax / 1000)
-		const rowToVal = args.rowToVal || (row => JSON.parse(row.data))
 
 		const prefix = commonPrefix([
 			[VERSION, COLLECTIONS, method, inputHash, createdMin].join(':'),
@@ -175,7 +174,7 @@ const createRedisStore = (db) => {
 
 		return rows
 		.sort(([idxA], [idxB]) => idxA - idxB)
-		.map(([idx, data]) => rowToVal({data}))
+		.map(([_, data]) => ({data}))
 	}
 
 	const writeCollection = async (args) => {

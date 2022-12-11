@@ -140,7 +140,6 @@ const createSqliteStore = (db) => {
 			whenMin, whenMax,
 			createdMin, createdMax
 		} = args
-		const rowToVal = args.rowToVal || (row => JSON.parse(row.data))
 
 		const rows = await dbAll(READ_COLLECTIONS, {
 			'$method': method, // 'dep' or 'arr'
@@ -151,7 +150,7 @@ const createSqliteStore = (db) => {
 			'$whenMax': whenMax / 1000 | 0
 		})
 		// todo: expose `.created`
-		return rows.map(rowToVal)
+		return rows
 	}
 
 	const writeCollection = async (args) => {

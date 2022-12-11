@@ -34,7 +34,6 @@ const createInMemoryStore = (opt = {}) => {
 		} = args
 		const createdMin = Math.floor(args.createdMin / 1000)
 		const createdMax = Math.ceil(args.createdMax / 1000)
-		const rowToVal = args.rowToVal || (row => row.data)
 
 		// todo: make sure to always get the latest collection
 		const keyPrefix = [COLLECTIONS, method, inputHash, ''].join(':')
@@ -54,7 +53,6 @@ const createInMemoryStore = (opt = {}) => {
 			lru.get(key) // mark entry as used
 			return rows
 			.filter(r => r.when >= whenMin && r.when <= whenMax)
-			.map(r => rowToVal(r))
 		}
 
 		return []

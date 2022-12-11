@@ -109,7 +109,7 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 	const pStorageInit = storage.init()
 
 	// arguments + time -> cache key
-	const collectionWithCache = async (method, useCache, cacheKeyData, whenMin, duration, args, rowToVal, valToRow) => {
+	const collectionWithCache = async (method, useCache, cacheKeyData, whenMin, duration, args, rowsToRes, resToRows) => {
 		const t0 = Date.now()
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 		const cachePeriod = method in cachePeriods
@@ -129,30 +129,31 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 		if (useCache) {
 			const createdMax = round1000(Date.now())
 			const createdMin = createdMax - cachePeriod
-			const values = await silenceRejections(storage.readCollection.bind(storage, {
+			let values = await silenceRejections(storage.readCollection.bind(storage, {
 				method, inputHash,
 				whenMin, whenMax: whenMin + duration,
 				createdMin, createdMax, cachePeriod,
-				rowToVal
 			}))
 			if (values && values.length > 0) { // todo: this is wrong, fix it
 				out.emit('hit', method, ...args, values.length)
-				Object.defineProperty(values, CACHED, {value: true})
-				Object.defineProperty(values, TIME, {value: Date.now() - t0})
-				return values
+
+				const res = rowsToRes(values)
+				Object.defineProperty(res, CACHED, {value: true})
+				Object.defineProperty(res, TIME, {value: Date.now() - t0})
+				return res
 			}
 		}
 		out.emit('miss', method, ...args)
 
 		const created = round1000(Date.now())
-		const vals = await hafas[method](...args)
+		const res = await hafas[method](...args)
 		await silenceRejections(storage.writeCollection.bind(storage, {
 			method, inputHash, when: whenMin, duration,
 			created, cachePeriod,
-			rows: vals.map(valToRow)
+			rows: resToRows(res),
 		}))
-		Object.defineProperty(vals, TIME, {value: Date.now() - t0})
-		return vals
+		Object.defineProperty(res, TIME, {value: Date.now() - t0})
+		return res
 	}
 
 	// arguments -> cache key
@@ -201,11 +202,15 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 	}
 
 	const depsOrArrs = (method) => {
-		const rowToVal = row => JSON.parse(row.data)
-		const valToRow = (arrOrDep) => ({
-			when: +new Date(arrOrDep.when),
-			data: JSON.stringify(arrOrDep)
-		})
+		const rowsToRes = (rows) => {
+			return rows.map(row => JSON.parse(row.data))
+		}
+		const resToRows = (res) => {
+			return res.map((arrOrDep) => ({
+				when: +new Date(arrOrDep.when),
+				data: JSON.stringify(arrOrDep)
+			}))
+		}
 
 		const query = (stopId, opt = {}) => {
 			let useCache = opt[CACHED] !== false
@@ -218,7 +223,7 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 			return collectionWithCache(method, useCache, [
 				stopId,
 				omit(opt, ['when', 'duration'])
-			], whenMin, duration, [stopId, opt], rowToVal, valToRow)
+			], whenMin, duration, [stopId, opt], rowsToRes, resToRows)
 		}
 		return query
 	}
