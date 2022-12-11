@@ -203,10 +203,16 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 
 	const depsOrArrs = (method) => {
 		const rowsToRes = (rows) => {
-			return rows.map(row => JSON.parse(row.data))
+			const arrsOrDeps = rows.map(row => JSON.parse(row.data))
+			return {
+				[method]: arrsOrDeps,
+				// We cannot guess this value because each arrival/departure might have an
+				// individual realtime data update timestamp.
+				realtimeDataUpdatedAt: null,
+			}
 		}
 		const resToRows = (res) => {
-			return res.map((arrOrDep) => ({
+			return res[method].map((arrOrDep) => ({
 				when: +new Date(arrOrDep.when),
 				data: JSON.stringify(arrOrDep)
 			}))

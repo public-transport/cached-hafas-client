@@ -40,7 +40,7 @@ const createInMemoryStore = (opt = {}) => {
 		for (const [key, entry] of lru) {
 			if (key.slice(0, keyPrefix.length) !== keyPrefix) continue
 
-			// is it tool old?
+			// is it too old?
 			const [created, ...rows] = entry
 			if (created < createdMin || created > createdMax) continue
 

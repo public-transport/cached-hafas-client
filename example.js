@@ -10,8 +10,8 @@ const store = createRedisStore(db)
 const MINUTE = 60 * 1000
 
 // using SQLite
-// const sqlite3 = require('sqlite3')
-// const createSqliteStore = require('./stores/sqlite')
+// import sqlite3 from 'sqlite3'
+// import {createSqliteStore} from './stores/sqlite.js'
 // const db = new sqlite3.Database(':memory:')
 // const store = createSqliteStore(db)
 

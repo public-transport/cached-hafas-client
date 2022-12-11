@@ -119,14 +119,14 @@ const runTests = (storeName, createDb, createStore) => {
 		const r1 = await h.departures(wollinerStr, {
 			duration: 30, when: '2020-11-11T11:00+01:00',
 		})
-		t.equal(r1.length, 3)
+		t.equal(r1.departures.length, 3)
 
 		// '2020-11-11T11:20+01:00' < '2020-11-11T12:11+02:00' // true
 		// Date.parse('2020-11-11T11:20+01:00') < Date.parse('2020-11-11T12:11+02:00') // false
 		const r2 = await h.departures(wollinerStr, {
 			duration: 20, when: '2020-11-11T11:00+01:00',
 		})
-		t.equal(r2.length, 2)
+		t.equal(r2.departures.length, 2)
 
 		await teardown()
 		t.end()
@@ -684,8 +684,12 @@ test('silences cache failures', async (t) => {
 	const dep = {when: '2020-11-11T11:11+01:00'}
 	const journey = {id: 'abc'}
 	const mockedHafas = {
-		departures: async () => [dep],
-		journeys: async () => [journey],
+		departures: async () => ({
+			departures: [dep],
+		}),
+		journeys: async () => ({
+			journeys: [journey],
+		}),
 	}
 	const withStoreMocks = (storeMocks = {}) => {
 		return createCachedHafas(mockedHafas, {

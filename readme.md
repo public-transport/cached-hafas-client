@@ -1,6 +1,6 @@
 # cached-hafas-client
 
-**Pass in a [HAFAS client](https://github.com/public-transport/hafas-client/tree/5), cache data from it.**
+**Pass in a [HAFAS client](https://github.com/public-transport/hafas-client/tree/6), cache data from it.**
 
 [![npm version](https://img.shields.io/npm/v/cached-hafas-client.svg)](https://www.npmjs.com/package/cached-hafas-client)
 [![build status](https://api.travis-ci.org/public-transport/cached-hafas-client.svg?branch=master)](https://travis-ci.org/public-transport/cached-hafas-client)
@@ -48,7 +48,7 @@ const cachedHafas = withCache(hafas, store)
 
 Because `cached-hafas-client` caches HAFAS responses by "request signature", it is build on the assumption that, HAFAS works deterministically, aside from the ever-changing transit data underneath. Because there are no guarantees for this, use `cached-hafas-client` with a grain of salt.
 
-This is why **you must send deterministic queries**; for example, you *must* pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/5/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/5/docs/arrivals.md), so that `cached-hafas-client` knows the time frame that the list of results returned by HAFAS is for.
+This is why **you must send deterministic queries**; for example, you *must* pass `opt.duration` to [`departures()`](https://github.com/public-transport/hafas-client/blob/6/docs/departures.md)/[`arrivals()`](https://github.com/public-transport/hafas-client/blob/6/docs/arrivals.md), so that `cached-hafas-client` knows the time frame that the list of results returned by HAFAS is for.
 
 ```js
 const wollinerStr = '900000007105'
@@ -65,7 +65,7 @@ await cachedHafas.departures(wollinerStr, {
 })
 ```
 
-*Note:* `cached-hafas-client` is only compatible with [`hafas-client@5`](https://github.com/public-transport/hafas-client/tree/5).
+*Note:* `cached-hafas-client` is only compatible with [`hafas-client@5`](https://github.com/public-transport/hafas-client/tree/6).
 
 ## with a custom cache TTL
 
@@ -117,7 +117,7 @@ await cachedHafas.departures(wollinerStr, {[CACHED]: false})
 createCachedHafas(hafas, storage, opt = {})
 ```
 
-`hafas` must be a [`hafas-client@5`](https://github.com/public-transport/hafas-client/tree/5)-compatible API client.
+`hafas` must be a [`hafas-client@6`](https://github.com/public-transport/hafas-client/tree/6)-compatible API client.
 
 `opt` overrides this default configuration:
 
