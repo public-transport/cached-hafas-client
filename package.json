@@ -1,12 +1,13 @@
 {
 	"name": "cached-hafas-client",
 	"description": "Pass in a HAFAS client, cache data from it.",
-	"version": "5.0.2",
+	"version": "5.1.0",
 	"main": "index.js",
 	"type": "module",
 	"files": [
 		"index.js",
 		"stores",
+		"with-metrics.js",
 		"example.js"
 	],
 	"keywords": [
@@ -32,9 +33,11 @@
 		"shallow-clone": "^3.0.1"
 	},
 	"devDependencies": {
+		"deep-equal": "^2.2.1",
 		"eslint": "^8.29.0",
 		"luxon": "^3.1.1",
 		"p-retry": "^5.1.2",
+		"prom-client": "^14",
 		"sqlite3": "^5.0.0",
 		"tap-spec": "^5.0.0",
 		"tape": "^5.0.1",
@@ -45,7 +48,8 @@
 		"dataVersion": 4
 	},
 	"peerDependencies": {
-		"hafas-client": ">=6.0 <=6.0"
+		"hafas-client": ">=6.0 <=6.0",
+		"prom-client": "^14"
 	},
 	"scripts": {
 		"lint": "eslint .",

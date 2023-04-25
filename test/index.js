@@ -825,3 +825,5 @@ test.onFinish(() => {
 })
 
 // todo: hit/miss events
+
+import './with-metrics.js'

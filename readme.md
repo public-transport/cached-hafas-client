@@ -109,6 +109,16 @@ import {CACHED} from 'cached-hafas-client'
 await cachedHafas.departures(wollinerStr, {[CACHED]: false})
 ```
 
+### tracking hits & misses as Prometheus metrics
+
+You can optionally track the number of hits & misses as two [Prometheus Counters](https://prometheus.io/docs/concepts/metric_types/#counter) `cached_hafas_client_hits_total` & `cached_hafas_client_misses_total`, respectively:
+
+```js
+import {trackCachingMetrics} from 'cached-hafas-client/with-metrics.js'
+
+trackCachingMetrics(cachedHafas) // will keep metrics now
+```
+
 
 ## API
 
