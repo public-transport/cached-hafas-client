@@ -69,7 +69,7 @@ const runTests = (storeName, createDb, createStore) => {
 				...cachePeriods,
 			}
 		})
-		return {hafas: cachedMocked, teardown}
+		return {hafas: cachedMocked, store, teardown}
 	}
 
 	test(storeName + ' departures: same timespan -> reads from cache', async (t) => {
@@ -645,12 +645,20 @@ const runTests = (storeName, createDb, createStore) => {
 
 	test(storeName + 'departures()/arrivals() without duration do not use the cache', async (t) => {
 		const spy = createSpy(hafas.departures)
-		const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
+		const {hafas: h, store, teardown} = await withMocksAndCache(hafas, {departures: spy})
+		store.readCollection = createSpy(store.readCollection.bind(store))
 
 		await h.departures(wollinerStr, {
 			when,
 		})
 		t.equal(spy.callCount, 1)
+		t.equal(store.readCollection.callCount, 0)
+
+		await h.departures(wollinerStr, {
+			when,
+		})
+		t.equal(spy.callCount, 2)
+		t.equal(store.readCollection.callCount, 0)
 
 		await teardown()
 		t.end()
