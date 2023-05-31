@@ -234,6 +234,7 @@ const createSqliteStore = (db) => {
 		const serialize = args.serialize || JSON.stringify
 
 		await dbRun(WRITE_ATOM, {
+			// todo: generate id in the database, make serial?
 			'$id': randomBytes(10).toString('hex'),
 			'$created': created / 1000 | 0,
 			'$method': method,
