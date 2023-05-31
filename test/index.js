@@ -324,6 +324,34 @@ const runTests = (storeName, createDb, createStore) => {
 		t.end()
 	})
 
+	test(storeName + ' stop(): caching works with falsy value', async (t) => {
+		const stopMock = async (id, opt = {}) => null
+		const stopSpy = createSpy(stopMock)
+
+		const defaultTtl = 0
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {
+			stop: stopSpy,
+		})
+		let hits = 0
+		h.on('hit', (...args) => {
+			hits++
+		})
+
+		{
+			await h.stop(wollinerStr)
+			t.equal(stopSpy.callCount, 1)
+			t.equal(hits, 0)
+		}
+		{
+			await h.stop(wollinerStr)
+			t.equal(stopSpy.callCount, 1)
+			t.equal(hits, 1)
+		}
+
+		await teardown()
+		t.end()
+	})
+
 	const pJourneyRefreshToken = hafas.journeys(wollinerStr, husemannstr, {
 		departure: when,
 		results: 1, stopovers: false, remarks: false
@@ -750,7 +778,7 @@ test('silences cache failures', async (t) => {
 			init: async () => {},
 			readCollection: async () => NO_RESULTS,
 			writeCollection: async () => {},
-			readAtom: async () => null,
+			readAtom: async () => NO_RESULTS,
 			writeAtom: async () => {},
 			...storeMocks,
 		})

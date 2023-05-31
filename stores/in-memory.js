@@ -84,9 +84,9 @@ const createInMemoryStore = (opt = {}) => {
 		const deserialize = args.deserialize || (val => val)
 
 		const key = [ATOMS, method, inputHash].join(':')
-		if (!lru.has(key)) return null
+		if (!lru.has(key)) return NO_RESULTS
 		const [created, val] = lru.get(key)
-		if (created < createdMin || created > createdMax) return null
+		if (created < createdMin || created > createdMax) return NO_RESULTS
 		return deserialize(val)
 	}
 

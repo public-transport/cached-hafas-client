@@ -233,7 +233,7 @@ const createRedisStore = (db) => {
 			keysPrefix,
 			createdMin, createdMax,
 		])
-		return val ? deserialize(val) : null
+		return val ? deserialize(val) : NO_RESULTS
 	}
 
 	const writeAtom = async (args) => {

@@ -220,7 +220,7 @@ const createSqliteStore = (db) => {
 			'$createdMax': Math.ceil(createdMax / 1000)
 		})
 
-		if (!row || !row.data) return null
+		if (!row || !row.data) return NO_RESULTS
 		return deserialize(row.data)
 	}
 

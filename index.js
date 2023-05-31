@@ -187,11 +187,12 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 				method: methodName, inputHash,
 				createdMin, createdMax, cachePeriod,
 			}))
-			// todo [breaking]: handle falsy values, e.g. Symbol representing "no match"
-			if (cached) {
+			if (cached !== NO_RESULTS) {
 				out.emit('hit', methodName, ...args)
-				Object.defineProperty(cached, CACHED, {value: true})
-				Object.defineProperty(cached, TIME, {value: Date.now() - t0})
+				if (cached) {
+					Object.defineProperty(cached, CACHED, {value: true})
+					Object.defineProperty(cached, TIME, {value: Date.now() - t0})
+				}
 				return cached
 			}
 		}
@@ -204,7 +205,10 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 			created, cachePeriod,
 			val,
 		}))
-		Object.defineProperty(val, TIME, {value: Date.now() - t0})
+
+		if (val) {
+			Object.defineProperty(val, TIME, {value: Date.now() - t0})
+		}
 		return val
 	}
 
