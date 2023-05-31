@@ -125,8 +125,9 @@ const createRedisStore = (db) => {
 			lua: READ_MATCHING_COLLECTION,
 		})
 	}
-	if (!db.readMatchingAtom) {
-		db.defineCommand('readMatchingAtom', {
+	const _readMatchingAtom = 'readMatchingAtom' + VERSION
+	if (!db[_readMatchingAtom]) {
+		db.defineCommand(_readMatchingAtom, {
 			numberOfKeys: 0,
 			lua: READ_MATCHING_ATOM,
 		})
@@ -135,24 +136,6 @@ const createRedisStore = (db) => {
 	const init = async () => {
 		debug('init')
 	}
-
-	const scanner = (pattern) => {
-		debug('scanner', pattern)
-		let cursor = '0', initial = true
-		const iterate = async () => {
-			if (!initial && cursor === '0') return {done: true, value: null}
-			initial = false
-
-			const res = await db.scan(cursor, 'MATCH', pattern, 'COUNT', '30')
-			cursor = res[0]
-			return {done: false, value: res[1]}
-		}
-
-		return {next: iterate}
-	}
-	const scan = pattern => ({
-		[Symbol.asyncIterator]: () => scanner(pattern)
-	})
 
 	const readCollection = async (args) => {
 		debug('readCollection', args)
@@ -229,7 +212,7 @@ const createRedisStore = (db) => {
 			[VERSION, ATOMS, method, inputHash, createdMin].join(':'),
 			[VERSION, ATOMS, method, inputHash, createdMax].join(':')
 		])
-		const val = await db.readMatchingAtom([
+		const val = await db[_readMatchingAtom]([
 			keysPrefix,
 			createdMin, createdMax,
 		])
