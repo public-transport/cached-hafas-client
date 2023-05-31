@@ -161,7 +161,7 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 	}
 
 	// arguments -> cache key
-	const atomWithCache = async (methodName, useCache, cacheKeyData, args) => {
+	const atomWithCache = async (methodName, readFromCache, cacheKeyData, args) => {
 		const t0 = Date.now()
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 		const cachePeriod = methodName in cachePeriods
@@ -169,22 +169,23 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 			: 10 * SECOND
 		if (cachePeriod === null) {
 			debug('atomWithCache', {
-				methodName, useCache, args,
+				methodName, readFromCache, args,
 				inputHash, cachePeriod,
 			}, 'not using cache because cachePeriods[method]() returned null')
-			useCache = false
+			readFromCache = false
 		} else if (!Number.isInteger(cachePeriod)) {
 			throw new Error(`opt.cachePeriods.${methodName}() must return an integer or null`)
 		}
 		await pStorageInit
 
-		if (useCache) {
+		if (readFromCache) {
 			const createdMax = round1000(Date.now())
 			const createdMin = createdMax - cachePeriod
 			const cached = await silenceRejections(storage.readAtom.bind(storage, {
 				method: methodName, inputHash,
 				createdMin, createdMax, cachePeriod,
 			}))
+			// todo [breaking]: handle falsy values, e.g. Symbol representing "no match"
 			if (cached) {
 				out.emit('hit', methodName, ...args)
 				Object.defineProperty(cached, CACHED, {value: true})
