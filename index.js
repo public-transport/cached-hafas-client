@@ -119,19 +119,14 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 
 		// rather static data
 		reachableFrom: (_, opt = {}) => dynamicCachePeriod(5, 12, 60, opt.when),
-		locations: HOUR,
-		stop: HOUR,
-		nearby: HOUR,
+		locations: () => HOUR,
+		stop: () => HOUR,
+		nearby: () => HOUR,
 
 		...(opt.cachePeriods || {}),
 	}
 	for (const [key, val] of Object.entries(cachePeriods)) {
-		// todo [breaking]: always expect a function
 		if ('function' === typeof val) continue
-		if ('number' === typeof val) {
-			cachePeriods[key] = () => val
-			continue
-		}
 		throw new TypeError(`opt.cachePeriods.${key} must be a number or a function returning a number`)
 	}
 
