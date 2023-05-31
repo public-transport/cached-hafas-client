@@ -5,6 +5,7 @@ import {stringify} from 'querystring'
 import pick from 'lodash/pick.js'
 import omit from 'lodash/omit.js'
 import {EventEmitter} from 'events'
+import {NO_RESULTS} from './no-results.js'
 
 const debug = createDebug('cached-hafas-client')
 
@@ -44,6 +45,7 @@ const silenceRejections = async (run) => {
 			err instanceof TypeError
 		) throw err
 	}
+	return NO_RESULTS
 }
 
 // todo: what about the past?
@@ -134,7 +136,7 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 				whenMin, whenMax: whenMin + duration,
 				createdMin, createdMax, cachePeriod,
 			}))
-			if (values && values.length > 0) { // todo: this is wrong, fix it
+			if (values !== NO_RESULTS) {
 				out.emit('hit', method, ...args, values.length)
 
 				const res = rowsToRes(values)

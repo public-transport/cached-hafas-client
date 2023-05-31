@@ -3,6 +3,7 @@ import _tapePromise from 'tape-promise'
 const {default: tapePromise} = _tapePromise
 import pRetry from 'p-retry'
 
+import {NO_RESULTS} from '../no-results.js'
 import {createSqliteStore} from '../stores/sqlite.js'
 import {createRedisStore} from '../stores/redis.js'
 import {createInMemoryStore} from '../stores/in-memory.js'
@@ -667,6 +668,33 @@ const runTests = (storeName, createDb, createStore) => {
 		t.end()
 	})
 
+	test(storeName + 'departures/arrivals(): caching works with 0 results', async (t) => {
+		const departuresMock = createSpy(async (id, opt = {}) => ({
+			departures: [],
+		}))
+		const {hafas: h, teardown} = await withMocksAndCache(hafas, {
+			departures: departuresMock,
+		})
+		let hits = 0
+		h.on('hit', (...args) => {
+			hits++
+		})
+
+		{
+			await h.departures(wollinerStr, {when, duration: 3, [h.CACHED]: false})
+			t.equal(departuresMock.callCount, 1)
+			t.equal(hits, 0)
+		}
+		{
+			await h.departures(wollinerStr, {when, duration: 3})
+			t.equal(departuresMock.callCount, 1)
+			t.equal(hits, 1)
+		}
+
+		await teardown()
+		t.end()
+	})
+
 	test(storeName + ' rounds opt.when to seconds', async (t) => {
 		const spy = createSpy(hafas.departures)
 		const {hafas: h, teardown} = await withMocksAndCache(hafas, {departures: spy})
@@ -720,7 +748,7 @@ test('silences cache failures', async (t) => {
 	const withStoreMocks = (storeMocks = {}) => {
 		return createCachedHafas(mockedHafas, {
 			init: async () => {},
-			readCollection: async () => [],
+			readCollection: async () => NO_RESULTS,
 			writeCollection: async () => {},
 			readAtom: async () => null,
 			writeAtom: async () => {},

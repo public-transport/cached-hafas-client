@@ -7,6 +7,7 @@ import {ok} from 'assert'
 import {randomBytes} from 'crypto'
 import createDebug from 'debug'
 import commonPrefix from 'common-prefix'
+import {NO_RESULTS} from '../no-results.js'
 const pkg = require('../package.json')
 
 const debug = createDebug('cached-hafas-client:redis')
@@ -84,7 +85,7 @@ while true do
 	end
 end
 
-return {};
+return nil;
 `
 
 const READ_MATCHING_ATOM = `\
@@ -117,8 +118,9 @@ end
 
 const createRedisStore = (db) => {
 	// todo: stop mutating `db`
-	if (!db.readMatchingCollection) {
-		db.defineCommand('readMatchingCollection', {
+	const _readMatchingCollection = 'readMatchingCollection' + VERSION
+	if (!db[_readMatchingCollection]) {
+		db.defineCommand(_readMatchingCollection, {
 			numberOfKeys: 0,
 			lua: READ_MATCHING_COLLECTION,
 		})
@@ -166,12 +168,15 @@ const createRedisStore = (db) => {
 			[VERSION, COLLECTIONS, method, inputHash, createdMax].join(':')
 		])
 		const rowsPrefix = `${VERSION}:${COLLECTIONS_ROWS}:`
-		const rows = await db.readMatchingCollection(
+		const rows = await db[_readMatchingCollection](
 			prefix, rowsPrefix,
 			createdMin, createdMax,
 			whenMin, whenMax,
 		)
-
+		
+		if (rows === null) { // no matching collection found
+			return NO_RESULTS
+		}
 		return rows
 		.sort(([idxA], [idxB]) => idxA - idxB)
 		.map(([_, data]) => ({data}))

@@ -7,6 +7,7 @@ import createDebug from 'debug'
 import LRUCache from 'quick-lru'
 import commonPrefix from 'common-prefix'
 import clone from 'shallow-clone'
+import {NO_RESULTS} from '../no-results.js'
 const pkg = require('../package.json')
 
 const debug = createDebug('cached-hafas-client:in-memory')
@@ -55,7 +56,7 @@ const createInMemoryStore = (opt = {}) => {
 			.filter(r => r.when >= whenMin && r.when <= whenMax)
 		}
 
-		return []
+		return NO_RESULTS
 	}
 
 	const writeCollection = async (args) => {

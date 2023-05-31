@@ -7,6 +7,7 @@ import {ok} from 'assert'
 import {promisify} from 'util'
 import {randomBytes} from 'crypto'
 import createDebug from 'debug'
+import {NO_RESULTS} from '../no-results.js'
 const pkg = require('../package.json')
 
 const debug = createDebug('cached-hafas-client:sqlite')
@@ -50,23 +51,38 @@ CREATE INDEX IF NOT EXISTS collections_${V}_query_id_idx
 `
 
 const READ_COLLECTIONS = `\
-SELECT collections_${V}.data FROM collection_queries_${V}
-LEFT JOIN collections_${V}
-	ON collection_queries_${V}.collection_queries_id = collections_${V}.query_id
-WHERE
-	-- only find equal queries
-	method = $method
-	AND inputHash = $inputHash
-	-- find queries created within the cache period
-	AND created >= $createdMin
-	AND created <= $createdMax
-	-- find queries that cover the when -> (when + duration) period
-	AND collection_queries_${V}."when" <= $whenMin
-	AND (collection_queries_${V}."when" + duration) >= $whenMax
-	-- only get items in the when -> (when + duration) period
-	AND collections_${V}."when" >= $whenMin
-	AND collections_${V}."when" <= $whenMax
-ORDER BY collections_${V}.i ASC;
+WITH
+	collection_queries_id AS (
+		SELECT collection_queries_id AS id
+		FROM collection_queries_${V}
+		WHERE
+			-- only find equal queries
+			method = $method
+			AND inputHash = $inputHash
+			-- find queries created within the cache period
+			AND created >= $createdMin
+			AND created <= $createdMax
+			-- find queries that cover the when -> (when + duration) period
+			AND "when" <= $whenMin
+			AND ("when" + duration) >= $whenMax
+		LIMIT 1
+	)
+-- pseudo "header" row to indicate that *there is* a matching collection, even if it has 0 rows
+SELECT id AS data
+FROM collection_queries_id
+-- the actual rows of the collection
+UNION ALL
+SELECT * FROM (
+	SELECT
+		data
+	FROM collections_${V} collections, collection_queries_id
+	WHERE
+		collections.query_id = collection_queries_id.id
+		-- only get items in the when -> (when + duration) period
+		AND collections."when" >= $whenMin
+		AND collections."when" <= $whenMax
+	ORDER BY collections.i ASC
+);
 `
 
 const WRITE_COLLECTION_QUERY = `\
@@ -141,7 +157,7 @@ const createSqliteStore = (db) => {
 			createdMin, createdMax
 		} = args
 
-		const rows = await dbAll(READ_COLLECTIONS, {
+		const [header, ...rows] = await dbAll(READ_COLLECTIONS, {
 			'$method': method, // 'dep' or 'arr'
 			'$inputHash': inputHash,
 			'$createdMin': Math.floor(createdMin / 1000),
@@ -149,6 +165,8 @@ const createSqliteStore = (db) => {
 			'$whenMin': whenMin / 1000 | 0,
 			'$whenMax': whenMax / 1000 | 0
 		})
+
+		if (!header) return NO_RESULTS
 		// todo: expose `.created`
 		return rows
 	}
