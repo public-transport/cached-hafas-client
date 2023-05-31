@@ -109,7 +109,7 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 	const pStorageInit = storage.init()
 
 	// arguments + time -> cache key
-	const collectionWithCache = async (method, useCache, cacheKeyData, whenMin, duration, args, rowsToRes, resToRows) => {
+	const collectionWithCache = async (method, readFromCache, cacheKeyData, whenMin, duration, args, rowsToRes, resToRows) => {
 		const t0 = Date.now()
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 		const cachePeriod = method in cachePeriods
@@ -117,16 +117,16 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 			: 10 * SECOND
 		if (cachePeriod === null) {
 			debug('collectionWithCache', {
-				method, useCache, whenMin, duration, args,
+				method, readFromCache, whenMin, duration, args,
 				inputHash, cachePeriod,
 			}, 'not using cache because cachePeriods[method]() returned null')
-			useCache = false
+			readFromCache = false
 		} else if (!Number.isInteger(cachePeriod)) {
 			throw new Error(`opt.cachePeriods.${method}() must return an integer or null`)
 		}
 		await pStorageInit
 
-		if (useCache) {
+		if (readFromCache) {
 			const createdMax = round1000(Date.now())
 			const createdMin = createdMax - cachePeriod
 			let values = await silenceRejections(storage.readCollection.bind(storage, {
@@ -147,11 +147,15 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 
 		const created = round1000(Date.now())
 		const res = await hafas[method](...args)
-		await silenceRejections(storage.writeCollection.bind(storage, {
-			method, inputHash, when: whenMin, duration,
-			created, cachePeriod,
-			rows: resToRows(res),
-		}))
+
+		if (Number.isInteger(duration)) {
+			await silenceRejections(storage.writeCollection.bind(storage, {
+				method, inputHash, when: whenMin, duration,
+				created, cachePeriod,
+				rows: resToRows(res),
+			}))
+		}
+
 		Object.defineProperty(res, TIME, {value: Date.now() - t0})
 		return res
 	}

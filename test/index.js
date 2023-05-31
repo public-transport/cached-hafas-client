@@ -647,18 +647,21 @@ const runTests = (storeName, createDb, createStore) => {
 		const spy = createSpy(hafas.departures)
 		const {hafas: h, store, teardown} = await withMocksAndCache(hafas, {departures: spy})
 		store.readCollection = createSpy(store.readCollection.bind(store))
+		store.writeCollection = createSpy(store.writeCollection.bind(store))
 
 		await h.departures(wollinerStr, {
 			when,
 		})
 		t.equal(spy.callCount, 1)
 		t.equal(store.readCollection.callCount, 0)
+		t.equal(store.writeCollection.callCount, 0)
 
 		await h.departures(wollinerStr, {
 			when,
 		})
 		t.equal(spy.callCount, 2)
 		t.equal(store.readCollection.callCount, 0)
+		t.equal(store.writeCollection.callCount, 0)
 
 		await teardown()
 		t.end()
