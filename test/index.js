@@ -62,11 +62,11 @@ const runTests = (storeName, createDb, createStore) => {
 		const store = createStore(db)
 		const cachedMocked = createCachedHafas(mocked, store, {
 			cachePeriods: {
-				departures: ttl, arrivals: ttl,
-				journeys: ttl, refreshJourney: ttl, trip: ttl,
-				radar: ttl,
-				locations: ttl, stop: ttl, nearby: ttl,
-				reachableFrom: ttl,
+				departures: () => ttl, arrivals: () => ttl,
+				journeys: () => ttl, refreshJourney: () => ttl, trip: () => ttl,
+				radar: () => ttl,
+				locations: () => ttl, stop: () => ttl, nearby: () => ttl,
+				reachableFrom: () => ttl,
 				...cachePeriods,
 			}
 		})

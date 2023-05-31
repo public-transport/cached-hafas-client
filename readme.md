@@ -78,7 +78,7 @@ const MINUTE = 60 * SECOND
 
 const cachePeriods = {
 	// cache all cachedHafas.stop(…) calls for 10m
-	stop: 10 * MINUTE,
+	stop: () => 10 * MINUTE,
 	// cache cachedHafas.trip(tripId, opt) based on sqrt(opt.when - now)
 	trip: (_, opt = {}) => {
 		const diffSecs = (new Date(opt.when) - Date.now()) / SECOND
@@ -133,15 +133,15 @@ createCachedHafas(hafas, storage, opt = {})
 ```js
 {
 	cachePeriods: {
-		departures: 30_1000, arrivals: 30_1000, // 30s
-		journeys: 30_1000, // 30s
-		refreshJourney: 60_1000, // 1m
-		trip: 30_1000, // 30s
-		radar: 10_1000, // 10s
-		locations: 3_600_1000, // 1h
-		stop: 3_600_1000, // 1h
-		nearby: 3_600_1000, // 1h
-		reachableFrom: 30_1000,
+		departures: () => 30_1000, arrivals: () => 30_1000, // 30s
+		journeys: () => 30_1000, // 30s
+		refreshJourney: () => 60_1000, // 1m
+		trip: () => 30_1000, // 30s
+		radar: () => 10_1000, // 10s
+		locations: () => 3_600_1000, // 1h
+		stop: () => 3_600_1000, // 1h
+		nearby: () => 3_600_1000, // 1h
+		reachableFrom: () => 30_1000,
 	},
 }
 ```
