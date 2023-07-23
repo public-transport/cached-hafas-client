@@ -38,7 +38,8 @@ local function read_collection (id)
 		cursor = res[1];
 
 		for _, key in ipairs(res[2]) do
-			local __, ___, when, i = string.find(key, "[^:]+:[^:]+:[^:]+:([^:]+):([^:]+)");
+			-- version:collections_rows:{method:inputHash}:collection_id:when:i
+			local __, ___, when, i = string.find(key, "[^:]+:[^:]+:[^:]+:[^:]+:[^:]+:([^:]+):([^:]+)");
 			when = tonumber(when);
 			i = tonumber(i);
 
@@ -156,14 +157,17 @@ const createRedisStore = (db) => {
 	}
 
 	// collections
-	// version:collections:method:inputHash:created -> collectionId:when:duration
-	// version:collections_rows:collection_id:when:i
+	// version:collections:{method:inputHash}:created -> collectionId:when:duration
+	// version:collections_rows:{method:inputHash}:collection_id:when:i
 
+	// We're using a Redis Cluster hash tag `{method:inputHash}` here. Both the
+	// collection entry and the row entries must be read in atomicly, so we need
+	// to make sure they have the same hash tag!
 	const _collectionPrefix = (method, inputHash) => {
-		return `${VERSION}:${COLLECTIONS}:${method}:${inputHash}`
+		return `${VERSION}:${COLLECTIONS}:{${method}:${inputHash}}`
 	}
-	const _collectionRowsPrefix = () => {
-		return `${VERSION}:${COLLECTIONS_ROWS}`
+	const _collectionRowsPrefix = (method, inputHash) => {
+		return `${VERSION}:${COLLECTIONS_ROWS}:{${method}:${inputHash}}`
 	}
 
 	const readCollection = async (args) => {
@@ -182,7 +186,7 @@ const createRedisStore = (db) => {
 			`${colPrefix}${createdMin}`,
 			`${colPrefix}${createdMax}`,
 		])
-		const rowsPrefix = _collectionRowsPrefix() + ':'
+		const rowsPrefix = _collectionRowsPrefix(method, inputHash) + ':'
 		const rows = await db[_readMatchingCollection](
 			prefix, rowsPrefix,
 			createdMin, createdMax,
@@ -208,7 +212,7 @@ const createRedisStore = (db) => {
 
 		const collectionId = randomBytes(10).toString('hex')
 
-		const rowsPrefix = _collectionRowsPrefix()
+		const rowsPrefix = _collectionRowsPrefix(method, inputHash)
 		const cmds = [
 			[
 				'set',
@@ -229,11 +233,12 @@ const createRedisStore = (db) => {
 	}
 
 	// atomics
-	// version:atoms:method:inputHash:created:id
+	// version:atoms:{method:inputHash}:created:id
 	// todo: this fails with `created` timestamps of different lengths (2033)
 
+	// We're using a Redis Cluster hash tag `{method:inputHash}` here.
 	const _atomPrefix = (method, inputHash) => {
-		return `${VERSION}:${ATOMS}:${method}:${inputHash}`
+		return `${VERSION}:${ATOMS}:{${method}:${inputHash}}`
 	}
 
 	const readAtom = async (args) => {
