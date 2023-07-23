@@ -155,6 +155,17 @@ const createRedisStore = (db) => {
 		debug('init')
 	}
 
+	// collections
+	// version:collections:method:inputHash:created -> collectionId:when:duration
+	// version:collections_rows:collection_id:when:i
+
+	const _collectionPrefix = (method, inputHash) => {
+		return `${VERSION}:${COLLECTIONS}:${method}:${inputHash}`
+	}
+	const _collectionRowsPrefix = () => {
+		return `${VERSION}:${COLLECTIONS_ROWS}`
+	}
+
 	const readCollection = async (args) => {
 		debug('readCollection', args)
 		const {
@@ -164,11 +175,14 @@ const createRedisStore = (db) => {
 		const createdMin = Math.floor(args.createdMin / 1000)
 		const createdMax = Math.ceil(args.createdMax / 1000)
 
+		const colPrefix = _collectionPrefix(method, inputHash) + ':'
+		// The common prefix is usually longer than just colPrefix because createdMin
+		// & createdMax usually share some digits.
 		const prefix = commonPrefix([
-			[VERSION, COLLECTIONS, method, inputHash, createdMin].join(':'),
-			[VERSION, COLLECTIONS, method, inputHash, createdMax].join(':')
+			`${colPrefix}${createdMin}`,
+			`${colPrefix}${createdMax}`,
 		])
-		const rowsPrefix = `${VERSION}:${COLLECTIONS_ROWS}:`
+		const rowsPrefix = _collectionRowsPrefix() + ':'
 		const rows = await db[_readMatchingCollection](
 			prefix, rowsPrefix,
 			createdMin, createdMax,
@@ -194,11 +208,11 @@ const createRedisStore = (db) => {
 
 		const collectionId = randomBytes(10).toString('hex')
 
-
+		const rowsPrefix = _collectionRowsPrefix()
 		const cmds = [
 			[
 				'set',
-				[VERSION, COLLECTIONS, method, inputHash, created].join(':'),
+				[_collectionPrefix(method, inputHash), created].join(':'),
 				[collectionId, when, duration].join(':'),
 				'PX', cachePeriod,
 			],
@@ -206,7 +220,8 @@ const createRedisStore = (db) => {
 				// todo: fall back to plannedWhen?
 				const t = +new Date(row.when)
 				if (Number.isNaN(t)) throw new Error(`rows[${i}].when must be a number or an ISO 8601 string`)
-				const key = [VERSION, COLLECTIONS_ROWS, collectionId, t, i].join(':')
+				// todo: add method & inputHash to match hash tag of `COLLECTIONS:`?
+				const key = [rowsPrefix, collectionId, t, i].join(':')
 				return ['set', key, row.data, 'PX', cachePeriod]
 			}),
 		]
@@ -214,8 +229,12 @@ const createRedisStore = (db) => {
 	}
 
 	// atomics
-	// method:inputHash:created:id
+	// version:atoms:method:inputHash:created:id
 	// todo: this fails with `created` timestamps of different lengths (2033)
+
+	const _atomPrefix = (method, inputHash) => {
+		return `${VERSION}:${ATOMS}:${method}:${inputHash}`
+	}
 
 	const readAtom = async (args) => {
 		debug('readAtom', args)
@@ -226,9 +245,12 @@ const createRedisStore = (db) => {
 		const createdMax = Math.ceil(args.createdMax / 1000)
 		const deserialize = args.deserialize || JSON.parse
 
+		const pref = _atomPrefix(method, inputHash) + ':'
+		// The common prefix is usually longer than just colPrefix because createdMin
+		// & createdMax usually share some digits.
 		const keysPrefix = commonPrefix([
-			[VERSION, ATOMS, method, inputHash, createdMin].join(':'),
-			[VERSION, ATOMS, method, inputHash, createdMax].join(':')
+			`${pref}${createdMin}`,
+			`${pref}${createdMax}`
 		])
 		const val = await db[_readMatchingAtom]([
 			keysPrefix,
@@ -247,7 +269,7 @@ const createRedisStore = (db) => {
 		const created = Math.round(args.created / 1000)
 		const serialize = args.serialize || JSON.stringify
 
-		const key = [VERSION, ATOMS, method, inputHash, created].join(':')
+		const key = [_atomPrefix(method, inputHash), created].join(':')
 		await db.set(key, serialize(val), 'PX', cachePeriod)
 	}
 
