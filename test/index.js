@@ -389,10 +389,17 @@ const runTests = (storeName, createDb, createStore) => {
 		await h.refreshJourney(refreshToken, opt)
 		t.equal(spy.callCount, 1)
 
-		await h.refreshJourney(refreshToken + 'a', opt) // different `refreshToken`
+		try {
+			await h.refreshJourney(refreshToken + 'a', opt) // different `refreshToken`
+		} catch (err) {
+			// HAFAS responds with `PROBLEMS` on invalid refresh tokens.
+			if (!(err?.isHafasError && err?.hafasCode === 'PROBLEMS')) throw err
+		}
 		t.equal(spy.callCount, 2)
+
 		await h.refreshJourney(refreshToken, {remarks: false}) // different `opt`
 		t.equal(spy.callCount, 3)
+
 		await teardown()
 		t.end()
 	})
