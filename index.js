@@ -119,12 +119,14 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 		const cachePeriod = method in cachePeriods
 			? cachePeriods[method](...args)
 			: 10 * SECOND
+		let writeToCache = true
 		if (cachePeriod === null) {
 			debug('collectionWithCache', {
 				method, readFromCache, whenMin, duration, args,
 				inputHash, cachePeriod,
 			}, 'not using cache because cachePeriods[method]() returned null')
 			readFromCache = false
+			writeToCache = false
 		} else if (!Number.isInteger(cachePeriod)) {
 			throw new Error(`opt.cachePeriods.${method}() must return an integer or null`)
 		}
@@ -152,7 +154,7 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 		const created = round1000(Date.now())
 		const res = await hafas[method](...args)
 
-		if (Number.isInteger(duration)) {
+		if (writeToCache && Number.isInteger(duration)) {
 			await silenceRejections(storage.writeCollection.bind(storage, {
 				method, inputHash, when: whenMin, duration,
 				created, cachePeriod,
@@ -171,12 +173,14 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 		const cachePeriod = methodName in cachePeriods
 			? cachePeriods[methodName](...args)
 			: 10 * SECOND
+		let writeToCache = true
 		if (cachePeriod === null) {
 			debug('atomWithCache', {
 				methodName, readFromCache, args,
 				inputHash, cachePeriod,
 			}, 'not using cache because cachePeriods[method]() returned null')
 			readFromCache = false
+			writeToCache = false
 		} else if (!Number.isInteger(cachePeriod)) {
 			throw new Error(`opt.cachePeriods.${methodName}() must return an integer or null`)
 		}
@@ -202,11 +206,13 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 
 		const created = round1000(Date.now())
 		const val = await hafas[methodName](...args)
-		await silenceRejections(storage.writeAtom.bind(storage, {
-			method: methodName, inputHash,
-			created, cachePeriod,
-			val,
-		}))
+		if (writeToCache) {
+			await silenceRejections(storage.writeAtom.bind(storage, {
+				method: methodName, inputHash,
+				created, cachePeriod,
+				val,
+			}))
+		}
 
 		if (val) {
 			Object.defineProperty(val, TIME, {value: Date.now() - t0})

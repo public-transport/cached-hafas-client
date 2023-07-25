@@ -318,6 +318,7 @@ const runTests = (storeName, createDb, createStore) => {
 
 			await h.journeys(wollinerStr, husemannstr, {...opt})
 			t.equal(journeysSpy.callCount, 2) // didn't use the cache!
+			// todo: check that it didn't write to the cache either
 		}
 
 		await teardown()
