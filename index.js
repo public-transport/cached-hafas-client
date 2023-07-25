@@ -5,6 +5,7 @@ import {stringify} from 'querystring'
 import pick from 'lodash/pick.js'
 import omit from 'lodash/omit.js'
 import {EventEmitter} from 'events'
+import {ReplyError} from 'ioredis'
 import {NO_RESULTS} from './no-results.js'
 
 const debug = createDebug('cached-hafas-client')
@@ -42,7 +43,8 @@ const silenceRejections = async (run) => {
 		if (
 			err instanceof RangeError ||
 			err instanceof ReferenceError ||
-			err instanceof TypeError
+			err instanceof TypeError ||
+			err instanceof ReplyError
 		) throw err
 	}
 	return NO_RESULTS
