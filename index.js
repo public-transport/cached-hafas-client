@@ -20,6 +20,7 @@ const TIME = Symbol.for('cached-hafas-client:time')
 const isObj = o => o && 'object' === typeof o && !Array.isArray(o)
 
 const hash = (str) => {
+	// todo: make hash shorter
 	return createHash('sha256').update(str, 'utf8').digest('hex').slice(0, 32)
 }
 
