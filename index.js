@@ -52,8 +52,8 @@ const silenceRejections = async (run) => {
 }
 
 // todo: what about the past?
-const dynamicCachePeriod = (multiplier, base, fallback, when) => {
-	const secs = (new Date(when) - Date.now()) / 1000
+const dynamicCachePeriod = (multiplier, base, fallback, when, _now = Date.now()) => {
+	const secs = (new Date(when) - _now) / 1000
 	if (!Number.isNaN(secs) && secs > 0) {
 		return Math.round(
 			multiplier *
@@ -63,9 +63,33 @@ const dynamicCachePeriod = (multiplier, base, fallback, when) => {
 	}
 	return multiplier * fallback * SECOND
 }
-strictEqual(dynamicCachePeriod(1.5, 3, 10, new Date(Date.now() + 30 * SECOND).toISOString()), 8216, '30s from now')
-strictEqual(dynamicCachePeriod(1.5, 3, 10, new Date(Date.now() + 30 * MINUTE).toISOString()), 63640, '30m from now')
-strictEqual(dynamicCachePeriod(1.5, 3, 10, new Date(Date.now() + 30 * HOUR).toISOString()), 492950, '30h from now')
+strictEqual(
+	dynamicCachePeriod(
+		1.5, 3, 10,
+		new Date(Date.now() + 30 * SECOND).toISOString(),
+		Date.now(),
+	),
+	8216,
+	'30s from now',
+)
+strictEqual(
+	dynamicCachePeriod(
+		1.5, 3, 10,
+		new Date(Date.now() + 30 * MINUTE).toISOString(),
+		Date.now(),
+	),
+	63640,
+	'30m from now',
+)
+strictEqual(
+	dynamicCachePeriod(
+		1.5, 3, 10,
+		new Date(Date.now() + 30 * HOUR).toISOString(),
+		Date.now(),
+	),
+	492950,
+	'30h from now',
+)
 
 const createCachedHafasClient = (hafas, storage, opt = {}) => {
 	if (!isObj(storage)) {
