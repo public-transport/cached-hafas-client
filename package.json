@@ -37,8 +37,8 @@
 		"deep-equal": "^2.2.1",
 		"eslint": "^8.29.0",
 		"luxon": "^3.1.1",
-		"p-retry": "^5.1.2",
-		"prom-client": "^14",
+		"p-retry": "^6.2.0",
+		"prom-client": "^15.1.0",
 		"sqlite3": "^5.0.0",
 		"tap-spec": "^5.0.0",
 		"tape": "^5.0.1",
@@ -50,7 +50,7 @@
 	},
 	"peerDependencies": {
 		"hafas-client": ">=6.0 <=6.2",
-		"prom-client": "^14"
+		"prom-client": "^15.1.0"
 	},
 	"scripts": {
 		"lint": "eslint .",
