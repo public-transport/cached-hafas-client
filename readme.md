@@ -41,7 +41,7 @@ const redis = new Redis()
 const store = createRedisStore(redis)
 
 // wrap HAFAS client with cache
-const withCache = require('cached-hafas-client')
+import {createCachedHafasClient as withCache} from 'cached-hafas-client'
 const cachedHafas = withCache(hafas, store)
 ```
 
