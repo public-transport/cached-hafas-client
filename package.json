@@ -1,7 +1,7 @@
 {
 	"name": "cached-hafas-client",
 	"description": "Pass in a HAFAS client, cache data from it.",
-	"version": "5.1.6",
+	"version": "5.1.7",
 	"main": "index.js",
 	"type": "module",
 	"files": [
@@ -49,7 +49,7 @@
 		"dataVersion": 4
 	},
 	"peerDependencies": {
-		"hafas-client": ">=6.0 <=6.2",
+		"hafas-client": ">=6.0 <=6.3",
 		"prom-client": "^15.1.0"
 	},
 	"scripts": {
