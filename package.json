@@ -23,7 +23,7 @@
 	"bugs": "https://github.com/public-transport/cached-hafas-client/issues",
 	"license": "ISC",
 	"engines": {
-		"node": ">=16"
+		"node": ">=20"
 	},
 	"dependencies": {
 		"common-prefix": "^1.1.0",
@@ -46,7 +46,7 @@
 		"vbb-hafas": "^8.0.0"
 	},
 	"cached-hafas-client": {
-		"dataVersion": 4
+		"dataVersion": 5
 	},
 	"peerDependencies": {
 		"hafas-client": ">=6.0 <=6.3",
