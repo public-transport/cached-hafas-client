@@ -27,6 +27,9 @@ jobs:
       uses: supercharge/redis-github-action@1.4.0
       with:
         redis-version: ${{ matrix.redis-version }}
+    - name: set up luacheck
+      run: sudo apt install -y lua-check
+
     - run: npm install
 
     - run: npm run lint

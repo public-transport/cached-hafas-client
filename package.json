@@ -53,7 +53,7 @@
 		"prom-client": "^15.1.0"
 	},
 	"scripts": {
-		"lint": "eslint .",
+		"lint": "eslint . && test/lint-lua-code.sh",
 		"test": "env NODE_ENV=dev node test/index.js | tap-spec",
 		"prepublishOnly": "npm run lint && npm test"
 	}
