@@ -89,7 +89,7 @@ while true do
 				redis.log(redis.LOG_VERBOSE, 'collection ' .. id .. ' doesn\\'t match (when: ' .. when .. ' duration: ' .. duration .. ')');
 			end
 		else
-			redis.log(redis.LOG_VERBOSE, 'collection ' .. id .. ' doesn\\'t match (created: ' .. created .. ')');
+			redis.log(redis.LOG_VERBOSE, 'collection (i: ' .. i .. ', key: ' .. key .. ') doesn\'t match (created: ' .. created .. ')');
 		end
 	end
 
