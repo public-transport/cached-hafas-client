@@ -63,11 +63,12 @@ const dynamicCachePeriod = (multiplier, base, fallback, when, _now = Date.now())
 	}
 	return multiplier * fallback * SECOND
 }
+const now = Date.now();
 strictEqual(
 	dynamicCachePeriod(
 		1.5, 3, 10,
-		new Date(Date.now() + 30 * SECOND).toISOString(),
-		Date.now(),
+		new Date(now + 30 * SECOND).toISOString(),
+		now,
 	),
 	8216,
 	'30s from now',
@@ -75,8 +76,8 @@ strictEqual(
 strictEqual(
 	dynamicCachePeriod(
 		1.5, 3, 10,
-		new Date(Date.now() + 30 * MINUTE).toISOString(),
-		Date.now(),
+		new Date(now + 30 * MINUTE).toISOString(),
+		now,
 	),
 	63640,
 	'30m from now',
@@ -84,8 +85,8 @@ strictEqual(
 strictEqual(
 	dynamicCachePeriod(
 		1.5, 3, 10,
-		new Date(Date.now() + 30 * HOUR).toISOString(),
-		Date.now(),
+		new Date(now + 30 * HOUR).toISOString(),
+		now,
 	),
 	492950,
 	'30h from now',
