@@ -1,7 +1,7 @@
 {
 	"name": "cached-hafas-client",
 	"description": "Pass in a HAFAS client, cache data from it.",
-	"version": "5.1.8",
+	"version": "5.1.9",
 	"main": "index.js",
 	"type": "module",
 	"files": [
@@ -18,6 +18,9 @@
 		"storage"
 	],
 	"author": "Jannis R <mail@jannisr.de>",
+	"contributors": [
+		"Traines <git@traines.eu>"
+	],
 	"homepage": "https://github.com/public-transport/cached-hafas-client",
 	"repository": "public-transport/cached-hafas-client",
 	"bugs": "https://github.com/public-transport/cached-hafas-client/issues",
