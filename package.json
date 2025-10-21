@@ -38,9 +38,9 @@
 	},
 	"devDependencies": {
 		"deep-equal": "^2.2.1",
-		"eslint": "^8.29.0",
+		"eslint": "^9.38.0",
 		"luxon": "^3.1.1",
-		"p-retry": "^6.2.0",
+		"p-retry": "^7.1.0",
 		"prom-client": "^15.1.0",
 		"sqlite3": "^5.0.0",
 		"tap-spec": "^5.0.0",
