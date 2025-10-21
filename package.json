@@ -26,21 +26,21 @@
 	"bugs": "https://github.com/public-transport/cached-hafas-client/issues",
 	"license": "ISC",
 	"engines": {
-		"node": ">=16"
+		"node": ">=22"
 	},
 	"dependencies": {
 		"common-prefix": "^1.1.0",
 		"debug": "^4.0.0",
 		"ioredis": "^5.2.4",
 		"lodash": "^4.17.10",
-		"quick-lru": "^6.1.1",
+		"quick-lru": "^7.3.0",
 		"shallow-clone": "^3.0.1"
 	},
 	"devDependencies": {
 		"deep-equal": "^2.2.1",
-		"eslint": "^8.29.0",
+		"eslint": "^9.38.0",
 		"luxon": "^3.1.1",
-		"p-retry": "^6.2.0",
+		"p-retry": "^7.1.0",
 		"prom-client": "^15.1.0",
 		"sqlite3": "^5.0.0",
 		"tap-spec": "^5.0.0",
@@ -49,7 +49,7 @@
 		"vbb-hafas": "^8.0.0"
 	},
 	"cached-hafas-client": {
-		"dataVersion": 4
+		"dataVersion": 5
 	},
 	"peerDependencies": {
 		"hafas-client": ">=6.0 <=6.3",
