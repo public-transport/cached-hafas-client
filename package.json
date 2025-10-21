@@ -33,7 +33,7 @@
 		"debug": "^4.0.0",
 		"ioredis": "^5.2.4",
 		"lodash": "^4.17.10",
-		"quick-lru": "^6.1.1",
+		"quick-lru": "^7.3.0",
 		"shallow-clone": "^3.0.1"
 	},
 	"devDependencies": {
