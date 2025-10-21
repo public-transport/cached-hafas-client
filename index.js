@@ -140,7 +140,7 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 
 	// arguments + time -> cache key
 	const collectionWithCache = async (method, readFromCache, cacheKeyData, whenMin, duration, args, rowsToRes, resToRows) => {
-		const t0 = Date.now()
+		const t0 = performance.now()
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 		const cachePeriod = method in cachePeriods
 			? cachePeriods[method](...args)
@@ -171,7 +171,7 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 
 				const res = rowsToRes(values)
 				Object.defineProperty(res, CACHED, {value: true})
-				Object.defineProperty(res, TIME, {value: Date.now() - t0})
+				Object.defineProperty(res, TIME, {value: Math.round(performance.now() - t0)})
 				return res
 			}
 		}
@@ -188,13 +188,13 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 			}))
 		}
 
-		Object.defineProperty(res, TIME, {value: Date.now() - t0})
+		Object.defineProperty(res, TIME, {value: Math.round(performance.now() - t0)})
 		return res
 	}
 
 	// arguments -> cache key
 	const atomWithCache = async (methodName, readFromCache, cacheKeyData, args) => {
-		const t0 = Date.now()
+		const t0 = performance.now()
 		const inputHash = hash(JSON.stringify(cacheKeyData))
 		const cachePeriod = methodName in cachePeriods
 			? cachePeriods[methodName](...args)
@@ -223,7 +223,7 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 				out.emit('hit', methodName, ...args)
 				if (cached) {
 					Object.defineProperty(cached, CACHED, {value: true})
-					Object.defineProperty(cached, TIME, {value: Date.now() - t0})
+					Object.defineProperty(cached, TIME, {value: Math.round(performance.now() - t0)})
 				}
 				return cached
 			}
@@ -241,7 +241,7 @@ const createCachedHafasClient = (hafas, storage, opt = {}) => {
 		}
 
 		if (val) {
-			Object.defineProperty(val, TIME, {value: Date.now() - t0})
+			Object.defineProperty(val, TIME, {value: Math.round(performance.now() - t0)})
 		}
 		return val
 	}
